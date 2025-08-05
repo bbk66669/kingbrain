@@ -34,6 +34,7 @@ insight/DROP/
 !insight/out.json
 
 # -------- 环境变量 / 秘钥 -------------------------------------------
+.env
 insight/.env*
 !insight/.env.example
 *.pem
