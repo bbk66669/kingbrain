@@ -1,0 +1,4 @@
+/srv/kingbrain/insight/kk
+/srv/kingbrain/insight/src
+/srv/kingbrain/insight/windking
+/srv/kingbrain/insight/windking_infra

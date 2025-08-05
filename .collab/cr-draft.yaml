@@ -1,0 +1,10 @@
+title: "feat: add lineage-gateway init container"
+description: |
+  在 Backstage Helm values 中增加 initContainer，用于等待 Marquez 就绪。
+diff: |
+  https://github.com/your-org/kingbrain/pull/123.diff
+attestations:
+  - type: sbom
+    digest: sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+  - type: kyverno
+    digest: sha256:b5bb9d8014a0f9b1d61e21e796d78dccdf1352f23cd32812f4850b878ae4944c

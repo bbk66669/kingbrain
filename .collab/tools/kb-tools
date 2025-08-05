@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+# kb-tools -- quick&dirty MVP so that make validate / make lock-hash work
+# --- KB-TODO-BEGIN (phase0 stub) ---
+# TODO: Builder-AI must replace this stub in Phase 1 with:
+#   • real sha256 digest of component source tar / image
+#   • syft SBOM verify / grype scan
+#   • kyverno vet
+# --- KB-TODO-END ---
+
+set -euo pipefail
+
+cmd=$1; shift || true
+
+_proj_root="$(cd "$( dirname "${BASH_SOURCE[0]}" )/../.." && pwd)"
+yellow() { printf "\033[33m%s\033[0m\n" "$*"; }
+
+case "$cmd" in
+  check-lock)
+    lock_file="$1"
+    yellow "🔒  check-lock: $lock_file (syntax only)"
+    yq e '.' "$lock_file" >/dev/null
+    ;;
+  digest-lock)
+    lock_file="$1"
+    yellow "✍  digest-lock: replacing each REPLACE_ME with timestamp-based sha256"
+    ts=$(date +%s)
+    sed -i "s/REPLACE_ME/sha256:$ts/g" "$lock_file"
+    ;;
+  sbom-verify)
+    yellow "📦  sbom-verify (stub, always pass)"
+    ;;
+  license-scan)
+    yellow "📝  license-scan (stub, always pass)"
+    ;;
+  vuln-scan)
+    yellow "🐞  vuln-scan (stub, always pass)"
+    ;;
+  kyverno-verify)
+    yellow "🛡  kyverno-verify (stub, always pass)"
+    ;;
+  lineage-validate)
+    yellow "🕸  lineage-validate (stub, always pass)"
+    ;;
+  *)
+    echo "kb-tools: unknown subcommand $cmd" >&2
+    exit 1
+    ;;
+esac

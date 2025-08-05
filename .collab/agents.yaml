@@ -1,0 +1,93 @@
+# /.collab/agents.yaml
+# ------------------------------------------------------------
+# CrewAI / LangGraph 兼容配置 —— “Architect-AI + Builder-AI + Reviewer-AI”
+# ------------------------------------------------------------
+agents:
+  architect:
+    role: "Architect-AI"
+    provider: "openai"
+    model: "o3-2025-04-16"          # 开发期可换 "o3"，发布前锁定快照
+    api_base: "https://api.openai.com/v1"
+    max_tokens: 200000              # o3 上下文上限
+    temperature: 0.2
+    concurrency: 1
+    retries: 3
+    system_prompt: |
+      You are KingBrain Architect.
+      Your responsibilities:
+      1. Read docs/kingbrain/POR.md and spec.lock.yaml.
+      2. Produce POR-ACK, PLAN.md, and manifest.json.
+      3. Ensure every output follows the AOC checklist:
+         (1) POR/Spec alignment
+         (2) Sources & licenses
+         (3) Causal mapping
+         (4) Unified diff only
+         (5) Evidence pack summary
+         (6) Rollback path
+         (7) Post-verification steps
+      Do not generate code; leave code generation to Builder-AI.
+
+  builder:
+    role: "Builder-AI"
+    provider: "anthropic"
+    model: "claude-sonnet-4-20250514"   # 若 Anthropic 控台显示其他日期，请同步更新
+    api_base: "https://api.anthropic.com/v1"
+    max_tokens: 64000
+    temperature: 0.4
+    batch_size: 5                      # 并行 5 个文件/任务
+    concurrency: 3                     # 同时最多 3 批
+    system_prompt: |
+      You are KingBrain Builder.
+      Input: PLAN.md + manifest.json.
+      Tasks:
+      - Borrow code/templates listed in manifest, cite repo+tag+license.
+      - Output ONLY unified diff blocks (```diff … ```), no full files.
+      - When diff touches *.sh / *.yaml / Dockerfile, run hadolint/shellcheck/kube-lint and include linter summary.
+      - Attach EvidencePack pointers (SBOM path, Cosign digest, Kyverno dry-run result).
+      - Never modify files outside paths.allowlist.yaml.
+
+  reviewer:
+    role: "Reviewer-AI"
+    provider: "openai"
+    model: "o3-2025-04-16"
+    api_base: "https://api.openai.com/v1"
+    max_tokens: 200000
+    temperature: 0.0
+    concurrency: 1
+    retries: 2
+    system_prompt: |
+      You are KingBrain Reviewer.
+      Verify Builder output against .aoc-checklist.md:
+      - Reject if any checklist item missing or diff touches forbidden path.
+      - Provide precise line-level comments and CR-<id>.yaml skeleton when rejecting.
+      - On acceptance, emit CloudEvent kb.strategy.promoted.v1 with attestation refs.
+
+# ------------------------------------------------------------
+workflow:
+  stages:
+    - name: ACK     # POR-ACK & 锚点确认
+      actor: "architect"
+    - name: PLAN    # 生成 PLAN.md + manifest.json
+      actor: "architect"
+    - name: BORROW  # 拉模板、列引用、生成 EvidencePack
+      actor: "builder"
+    - name: DIFF    # 输出最小 unified diff
+      actor: "builder"
+    - name: CR      # 校验并生成 CR-<id>.yaml
+      actor: "reviewer"
+
+  retry_policy:
+    max_attempts: 2      # Builder/Reviewer 阶段失败后自动重跑两次
+    backoff_seconds: 30
+
+# ------------------------------------------------------------
+audit:
+  store: "neo4j"                          # L4 记忆与因果链
+  cloudevents_topic: "kb.audit"           # 供 L1 Insight Map / L4 Timeline 订阅
+
+# 事件转发（可选）：开启后所有阶段事件都会发到 NATS
+emitter:
+  type: "cloudevents"
+  sink: "nats://127.0.0.1:4222"
+  topic_prefix: "kb.workflow."
+# ------------------------------------------------------------

@@ -1,0 +1,28 @@
+{
+  "instance": "cadvisor:8080",
+  "job": "cadvisor"
+}
+{
+  "instance": "kingbrain-core:8000",
+  "job": "core"
+}
+{
+  "instance": "core-gray:8001",
+  "job": "core-gray"
+}
+{
+  "instance": "infra-meilisearch-1:7700",
+  "job": "meilisearch"
+}
+{
+  "instance": "localhost:9090",
+  "job": "prometheus"
+}
+{
+  "instance": "redis_exporter:9121",
+  "job": "redis_exporter"
+}
+{
+  "instance": "infra-weaviate-1:2112",
+  "job": "weaviate"
+}

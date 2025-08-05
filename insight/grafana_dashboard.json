@@ -1,0 +1,44 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Insight Metrics",
+    "panels": [
+      {
+        "type": "timeseries",
+        "title": "Search Latency (p50/p90)",
+        "targets": [
+          { "refId": "A", "expr": "histogram_quantile(0.5, sum(rate(code_search_latency_seconds_bucket[5m])) by (le))" },
+          { "refId": "B", "expr": "histogram_quantile(0.9, sum(rate(code_search_latency_seconds_bucket[5m])) by (le))" }
+        ],
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+      },
+      {
+        "type": "timeseries",
+        "title": "Recall Precision",
+        "targets": [
+          { "refId": "A", "expr": "recall_precision" }
+        ],
+        "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+      },
+      {
+        "type": "timeseries",
+        "title": "OpenAI Token Usage",
+        "targets": [
+          { "refId": "A", "expr": "sum(increase(openai_tokens_prompt[5m]))" },
+          { "refId": "B", "expr": "sum(increase(openai_tokens_completion[5m]))" }
+        ],
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+      },
+      {
+        "type": "timeseries",
+        "title": "Budget Spent (USD)",
+        "targets": [
+          { "refId": "A", "expr": "budget_spent_usd" }
+        ],
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+      }
+    ],
+    "schemaVersion": 39,
+    "version": 1
+  }
+}

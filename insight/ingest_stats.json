@@ -1,0 +1,32 @@
+[
+  {
+    "sig_weight": 2,
+    "annotation": true,
+    "written": 148
+  },
+  {
+    "sig_weight": 2,
+    "annotation": false,
+    "written": 148
+  },
+  {
+    "sig_weight": 3,
+    "annotation": true,
+    "written": 148
+  },
+  {
+    "sig_weight": 3,
+    "annotation": false,
+    "written": 148
+  },
+  {
+    "sig_weight": 5,
+    "annotation": true,
+    "written": 148
+  },
+  {
+    "sig_weight": 5,
+    "annotation": false,
+    "written": 148
+  }
+]

@@ -1,0 +1,3 @@
+git@github.com:bbk66669/kk.git
+git@github.com:bbk66669/windking.git
+git@github.com:bbk66669/windking-infra.git

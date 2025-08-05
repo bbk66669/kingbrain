@@ -1,0 +1,39 @@
+# /.collab/paths.allowlist.yaml
+# --------------------------------------------
+# 只允许 AI 写入 / 修改以下路径；其他路径视为只读
+allow:
+  - "/apps/**"
+  - "/services/**"
+  - "/scripts/**"
+  - "/ml/**"
+  - "/observability/**"
+  - "/orchestrator/**"
+  - "/strategy/ci/**"
+  - "/.collab/**"
+  - "/docs/**"
+
+deny:
+  - "/.git/**"
+  - "/configs/registry/**"        # 受控
+  - "/preference/models/**"       # 需双签
+  - "/security/**"                # 准入策略
+  - "/terraform/**"
+# 若后续需屏蔽生成物，可再追加：
+# deny:
+#   - "/k8s/manifests/generated/**"
+
+# 只读目录（AI 可读不可写）
+readonly:
+  - "/k8s/manifests/**/*.yaml"      # 所有 YAML 可读不可写
+  - "/docs/kingbrain/**"
+  - "/grafana/dashboards/**/*.json"
+
+# 可写目录（AI 阶段性写入＆修改）
+writable:
+  - "/docs/kingbrain/ACK/**"
+  - "/docs/kingbrain/PLAN/**"
+  - "/docs/kingbrain/BORROW/**"
+  - "/docs/kingbrain/DIFF/**"
+  - "/reports/**"
+# --------------------------------------------
+

@@ -1,0 +1,20 @@
+# /.collab/kb-validate/config.yaml
+# ------------------------------------------------------------
+steps:
+  - name: "SpecLock"
+    run: "kb tools check-lock .collab/spec.lock.yaml"
+  - name: "SBOM"
+    run: "kb tools sbom-verify --format spdx-json@3.0 --path=data/sbom/"
+  - name: "License"
+    run: "kb tools license-scan --policy=configs/sbom-policy.yaml"
+  - name: "Vulnerability"
+    run: "kb tools vuln-scan --critical-only"
+  - name: "Kyverno"
+    run: "kb tools kyverno-verify ./k8s/manifests"
+  - name: "OpenLineage"
+    run: "kb tools lineage-validate ./data/lineage"
+on_fail: "block"
+report:
+  format: "JUnit"
+  output: "reports/kb-validate.xml"
+# ------------------------------------------------------------

@@ -1,0 +1,9 @@
+{
+    "lb": "loadbalance",
+    "balance": "loadbalance",
+    "bal": "loadbalance",
+    "retry": "retry",
+    "backoff": "retry",
+    "err": "error_handling",
+    "exception": "error_handling"
+}

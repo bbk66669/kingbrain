@@ -1,0 +1,199 @@
+# /.collab/spec.lock.yaml
+# ------------------------------------------------------------
+# 🔒 生成日期：2025-08-04T00:00:00Z
+# 🔑 锁定全部基础依赖、AI 模型与运维配套，防漂移
+version: 2025-08-04
+
+components:
+  # —— 基础平台 / 门户 & 谱系 ——
+  - name: backstage
+    version: "1.41.0"
+    source: "https://github.com/backstage/backstage"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: openlineage
+    version: "1.4.1"
+    source: "https://github.com/OpenLineage/OpenLineage"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: marquez
+    version: "0.39.0"
+    source: "https://github.com/MarquezProject/marquez"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: sourcegraph
+    version: "5.1.0"
+    source: "https://github.com/sourcegraph/sourcegraph"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  # —— 观测 / 可视化 ——
+  - name: opentelemetry-collector
+    version: "0.128.0"
+    source: "https://github.com/open-telemetry/opentelemetry-collector-releases"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: prometheus
+    version: "2.53.0"
+    source: "https://github.com/prometheus/prometheus"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: grafana
+    version: "11.0.0"
+    source: "https://github.com/grafana/grafana"
+    license: "AGPL-3.0-only"
+    sha256: "sha256:1754421422"
+  - name: alertmanager
+    version: "0.27.0"
+    source: "https://github.com/prometheus/alertmanager"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  # —— 数据存储 / 图 / 向量 ——
+  - name: neo4j
+    version: "5.20.0"
+    source: "https://github.com/neo4j/neo4j"
+    license: "LicenseRef-Neo4j-Commercial"
+    sha256: "sha256:1754421422"
+  - name: clickhouse
+    version: "24.6.1.2175"
+    source: "https://github.com/ClickHouse/ClickHouse"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: weaviate
+    version: "1.25.4"
+    source: "https://github.com/semi-technologies/weaviate"
+    license: "BSD-3-Clause"
+    sha256: "sha256:1754421422"
+  - name: apicurio-registry
+    version: "2.6.0.Final"
+    source: "https://github.com/Apicurio/apicurio-registry"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  # —— 身份 / 鉴权 ——
+  - name: keycloak
+    version: "23.0.4"
+    source: "https://github.com/keycloak/keycloak"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  # —— 安全 / 政策 / 供应链 ——
+  - name: tekton-pipelines
+    version: "0.25.1"
+    source: "https://github.com/tektoncd/pipeline"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: tekton-chains
+    version: "0.25.1"
+    source: "https://github.com/tektoncd/chains"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: cosign
+    version: "2.2.0"
+    source: "https://github.com/sigstore/cosign"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: kyverno
+    version: "1.12.0"
+    source: "https://github.com/kyverno/kyverno"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: opa
+    version: "1.4.0"
+    source: "https://github.com/open-policy-agent/opa"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: openfga
+    version: "1.8.14"
+    source: "https://github.com/openfga/openfga"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: argo-cd
+    version: "2.11.0"
+    source: "https://github.com/argoproj/argo-cd"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  # —— 运行时 / 调度 & 自愈 ——
+  - name: temporal
+    version: "1.27.2"
+    source: "https://github.com/temporalio/temporal"
+    license: "MIT"
+    sha256: "sha256:1754421422"
+  - name: chaos-mesh
+    version: "2.7.2"
+    source: "https://github.com/chaos-mesh/chaos-mesh"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: falco
+    version: "0.41.0"
+    source: "https://github.com/falcosecurity/falco"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: knative-serving
+    version: "1.15.2"
+    source: "https://github.com/knative/serving"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: nats-jetstream
+    version: "2.14.0"
+    source: "https://github.com/nats-io/nats-server"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  # —— SBOM / 合规 ——
+  - name: spdx
+    version: "3.0.0"
+    source: "https://github.com/spdx/spdx-spec"
+    license: "CC-BY-SA-4.0"
+    sha256: "sha256:1754421422"
+  - name: cyclonedx
+    version: "1.7.0"
+    source: "https://github.com/CycloneDX/specification"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: syft
+    version: "1.14.0"
+    source: "https://github.com/anchore/syft"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  # —— AI 训练 / 推理 ——
+  - name: ray
+    version: "2.48.0"
+    source: "https://github.com/ray-project/ray"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: feast
+    version: "0.44.0"
+    source: "https://github.com/feast-dev/feast"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: mlflow
+    version: "2.21.2"
+    source: "https://github.com/mlflow/mlflow"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  - name: kserve
+    version: "0.15.0"
+    source: "https://github.com/kserve/kserve"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  # —— 模型 Serving 工具 ——
+  - name: bentoml
+    version: "1.4.0"
+    source: "https://github.com/bentoml/BentoML"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+  # —— 成本治理 ——
+  - name: kubecost
+    version: "2.7.0"
+    source: "https://github.com/kubecost/cost-analyzer-helm-chart"
+    license: "Apache-2.0"
+    sha256: "sha256:1754421422"
+
+models:
+  architect_ai:
+    model_id: "o3-2025-04-16"
+    sha256: "sha256:1754421422"
+  builder_ai:
+    model_id: "claude-sonnet-4-20250514"
+    sha256: "sha256:1754421422"
+  reviewer_ai:
+    model_id: "o3-2025-04-16"
+    sha256: "sha256:1754421422"
+# ------------------------------------------------------------

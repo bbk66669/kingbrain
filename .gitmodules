@@ -1,0 +1,3 @@
+[submodule ".collab/schemas/openlineage"]
+	path = .collab/schemas/openlineage
+	url = https://github.com/OpenLineage/OpenLineage.git

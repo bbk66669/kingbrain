@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# kb-stage – 生成五阶段骨架
+# Phase 0 由 Builder-AI 实现完整逻辑
+echo "TODO: implement kb-stage $*"

@@ -1,0 +1,13 @@
+version: '3.7'
+services:
+  sourcegraph:
+    image: sourcegraph/server:5.3.3
+    container_name: sg
+    restart: always
+    ports:
+      - "7080:7080"
+      - "7443:7443"
+    volumes:
+      - ./sg-data:/data
+    environment:
+      - SRC_EXTERNAL_URL=http://localhost:7080
