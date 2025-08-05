@@ -1,6 +1,7 @@
 # -------- Python / 通用 ---------------------------------------------
 .venv/
-**/__pycache__/
+**/.venv/                # （可选）子目录虚拟环境
+**/__pycache__/          # ← 修正 pycache 文件夹名，双下划线
 *.py[cod]
 *.so
 .pytest_cache/
@@ -13,7 +14,7 @@ htmlcov/
 
 # -------- 项目产物 (数据库 / 日志 / 缓存) -----------------------------
 insight/*.db
-insight/*.sqlite*
+insight/*.sqlite*        # 保留已有规则
 insight/embed_cache.*
 insight/*.tar.gz
 insight/all_labels.json
@@ -26,6 +27,11 @@ insight/ingest_stats.json
 insight/search_log.csv
 insight/.grimp_cache/
 insight/DROP/
+
+# -------- 反选需要保留的 JSON （视需求决定是否保留） ---------------
+!insight/grafana_dashboard.json
+!insight/extsvc.json
+!insight/out.json
 
 # -------- 环境变量 / 秘钥 -------------------------------------------
 insight/.env*
