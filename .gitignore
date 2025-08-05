@@ -1,2 +1,42 @@
+# -------- Python / 通用 ---------------------------------------------
 .venv/
-insight/.venv/
+**/__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+
+# -------- 构建 / 覆盖 / 临时 ----------------------------------------
+build/
+dist/
+htmlcov/
+.coverage
+
+# -------- 项目产物 (数据库 / 日志 / 缓存) -----------------------------
+insight/*.db
+insight/*.sqlite*
+insight/embed_cache.*
+insight/*.tar.gz
+insight/all_labels.json
+insight/chunks.json
+insight/dead_code.txt
+insight/full_files.json
+insight/live_files.json
+insight/min_lines_stats.json
+insight/ingest_stats.json
+insight/search_log.csv
+insight/.grimp_cache/
+insight/DROP/
+
+# -------- 环境变量 / 秘钥 -------------------------------------------
+insight/.env*
+!insight/.env.example
+*.pem
+*.p12
+
+# -------- 下载的二进制 ----------------------------------------------
+kyverno-cli_*.tar.gz
+
+# -------- 其他 -------------------------------------------------------
+*.log
+*.tmp
+*.swp
