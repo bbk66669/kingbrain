@@ -1,20 +1,47 @@
-# -------- Python / 通用 ---------------------------------------------
+# =========================
+# .gitignore （可直接复制）
+# =========================
+
+# -------- Python / 通用 ----------
 .venv/
-**/.venv/                # （可选）子目录虚拟环境
-**/__pycache__/          # ← 修正 pycache 文件夹名，双下划线
+**/.venv/
+**/__pycache__/
 *.py[cod]
 *.so
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.ipynb_checkpoints/
+.python-version
 
-# -------- 构建 / 覆盖 / 临时 ----------------------------------------
+# -------- 构建 / 覆盖 / 分发 ----------
 build/
 dist/
+*.egg-info/
+*.egg
+.eggs/
+pip-wheel-metadata/
 htmlcov/
 .coverage
+.coverage.*
+coverage.xml
 
-# -------- 项目产物 (数据库 / 日志 / 缓存) -----------------------------
+# -------- 编辑器 / 系统杂项 ----------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# -------- 日志 / 临时 ----------
+*.log
+*.tmp
+*.swp
+*.swo
+
+# -------- 项目产物（数据库 / 日志 / 缓存） ----------
 insight/*.db
-insight/*.sqlite*        # 保留已有规则
+insight/*.sqlite*
 insight/embed_cache.*
 insight/*.tar.gz
 insight/all_labels.json
@@ -25,25 +52,34 @@ insight/live_files.json
 insight/min_lines_stats.json
 insight/ingest_stats.json
 insight/search_log.csv
+insight/chunks_report.html
 insight/.grimp_cache/
 insight/DROP/
 
-# -------- 反选需要保留的 JSON （视需求决定是否保留） ---------------
+# -------- 反选需要保留的 JSON（若将来有上层规则忽略 *.json 时生效） ----------
 !insight/grafana_dashboard.json
-!insight/extsvc.json
 !insight/out.json
 
-# -------- 环境变量 / 秘钥 -------------------------------------------
-.env
-insight/.env*
+# -------- 环境变量 / 秘钥 ----------
+# 任意位置的 env 文件
+**/.env
+**/.env.*
+**/*.env
+!**/.env.example
 !insight/.env.example
+# direnv
+**/.envrc
+
+# 常见证书 / 私钥（避免误提交）
 *.pem
 *.p12
+*.pfx
+*.der
+*.crt
+*.key
 
-# -------- 下载的二进制 ----------------------------------------------
+# -------- 下载的二进制 ----------
 kyverno-cli_*.tar.gz
 
-# -------- 其他 -------------------------------------------------------
-*.log
-*.tmp
-*.swp
+# -------- 只忽略这个“单个文件”，不影响同目录其他文件 ----------
+insight/extsvc.json
