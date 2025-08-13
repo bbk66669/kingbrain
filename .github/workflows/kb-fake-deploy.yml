@@ -1,0 +1,31 @@
+name: kb-fake-deploy
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, kb]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup kubeconfig
+        env: { KUBECONFIG_B64: ${{ secrets.KUBECONFIG_B64 }} }
+        shell: bash
+        run: |
+          mkdir -p "$HOME/.kube"
+          echo "$KUBECONFIG_B64" | base64 -d > "$HOME/.kube/config"
+          kubectl version --client=true
+
+      - name: Preflight
+        run: make kb-preflight
+
+      - name: Deploy (FAKE)
+        run: make kb-deploy FAKE=1
+
+      - name: Contracts
+        run: make kb-contracts
+
+      - name: Smoke
+        run: make kb-smoke

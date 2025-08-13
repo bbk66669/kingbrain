@@ -1,0 +1,9 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kb-orchestrator
+  namespace: orchestrator
+spec:
+  template:
+    spec:
+      serviceAccountName: kb-runner

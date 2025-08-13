@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$HERE/.." && pwd)"
+if [ "${KB_BOOTSTRAP:-0}" = "1" ] && [ -x "$ROOT/.collab/bootstrap-tools/kb-tools" ]; then
+  exec "$ROOT/.collab/bootstrap-tools/kb-tools" "$@"
+fi
+exec "$ROOT/.collab/tools/kb-tools" "$@"

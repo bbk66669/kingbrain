@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kb-orchestrator
+  namespace: orchestrator
+  labels:
+    app: kb-orchestrator
+spec:
+  selector:
+    app: kb-orchestrator
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000

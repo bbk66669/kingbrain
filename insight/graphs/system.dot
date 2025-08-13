@@ -1,0 +1,103 @@
+digraph KingBrain {
+  rankdir="LR"
+
+    concentrate = true;
+
+    rankdir = TB;
+    node [style=filled,fillcolor="#ffffff",fontcolor="#000000",fontname=Helvetica,fontsize=10];
+
+    dotenv [fillcolor="#f31616",fontcolor="#ffffff"];
+    kk_src_agent_agent_decide_and_execute [fillcolor="#887d3a",fontcolor="#ffffff",label="kk\.\nsrc\.\nagent\.\nagent_decide_and_execute"];
+    kk_src_agent_llm_agent [fillcolor="#b3a44c",label="kk\.\nsrc\.\nagent\.\nllm_agent"];
+    kk_src_agent_position_guard [fillcolor="#c2b147",label="kk\.\nsrc\.\nagent\.\nposition_guard"];
+    kk_src_intent_cache [fillcolor="#b3a44c",label="kk\.\nsrc\.\nintent_cache"];
+    kk_src_llm_local_client [fillcolor="#ac9d49",label="kk\.\nsrc\.\nllm_local_client"];
+    kk_src_monitor [fillcolor="#ceb93b",label="kk.src.monitor"];
+    kk_src_monitor_metrics [fillcolor="#ccb633",label="kk\.\nsrc\.\nmonitor\.\nmetrics"];
+    kk_src_risk [fillcolor="#c2b147",label="kk.src.risk"];
+    kk_src_risk_trailing [fillcolor="#c2b147",label="kk\.\nsrc\.\nrisk\.\ntrailing"];
+    kk_src_storage [fillcolor="#c2b147",label="kk.src.storage"];
+    kk_src_storage_ensure_schema [fillcolor="#c0ad40",label="kk\.\nsrc\.\nstorage\.\nensure_schema"];
+    kk_src_storage_ensure_tradelog [fillcolor="#8f833d",fontcolor="#ffffff",label="kk\.\nsrc\.\nstorage\.\nensure_tradelog"];
+    kk_src_storage_weaviate_client [fillcolor="#ac9d49",label="kk\.\nsrc\.\nstorage\.\nweaviate_client"];
+    kk_src_storage_weaviate_schema [fillcolor="#b3a44c",label="kk\.\nsrc\.\nstorage\.\nweaviate_schema"];
+    kk_src_trade_market [fillcolor="#b3a44c",label="kk\.\nsrc\.\ntrade\.\nmarket"];
+    kk_src_trade_market_ws [fillcolor="#b3a44c",label="kk\.\nsrc\.\ntrade\.\nmarket_ws"];
+    kk_src_trade_market_ws_binance [fillcolor="#b3a44c",label="kk\.\nsrc\.\ntrade\.\nmarket_ws_binance"];
+    kk_src_trade_market_ws_okx [fillcolor="#b3a44c",label="kk\.\nsrc\.\ntrade\.\nmarket_ws_okx"];
+    kk_src_trade_order [fillcolor="#a49746",label="kk\.\nsrc\.\ntrade\.\norder"];
+    kk_src_trade_loop [fillcolor="#b3a44c",label="kk\.\nsrc\.\ntrade_loop"];
+    kk_ws_main [fillcolor="#ac9d49",label="kk.ws_main"];
+    openai [fillcolor="#5fcc33"];
+    prometheus_client [fillcolor="#33cc8a"];
+    redis [fillcolor="#4089c0",fontcolor="#ffffff"];
+    requests [fillcolor="#5926d9",fontcolor="#ffffff"];
+    weaviate [fillcolor="blue",fontcolor="white",shape="box"];
+    weaviate_collections [fillcolor="blue",fontcolor="white",label="weaviate\.\ncollections",shape="box"];
+    weaviate_collections_classes [fillcolor="#c247b1",fontcolor="#ffffff",label="weaviate\.\ncollections\.\nclasses"];
+    weaviate_collections_classes_config [fillcolor="#9d4390",fontcolor="#ffffff",label="weaviate\.\ncollections\.\nclasses\.\nconfig"];
+    weaviate_connect [fillcolor="#ce3bb9",fontcolor="#ffffff",label="weaviate\.\nconnect"];
+    weaviate_exceptions [fillcolor="#ce3bb9",fontcolor="#ffffff",label="weaviate\.\nexceptions"];
+    dotenv -> kk_src_llm_local_client [fillcolor="#f31616",minlen="3"];
+    dotenv -> kk_src_trade_market_ws [fillcolor="#f31616",minlen="4"];
+    dotenv -> kk_src_trade_market_ws_binance [fillcolor="#f31616",minlen="4"];
+    dotenv -> kk_src_trade_market_ws_okx [fillcolor="#f31616",minlen="4"];
+    dotenv -> kk_src_trade_order [fillcolor="#f31616",minlen="4"];
+    dotenv -> kk_src_trade_loop [fillcolor="#f31616",minlen="3"];
+    kk_src_agent_position_guard -> kk_src_agent_agent_decide_and_execute [fillcolor="#c2b147",weight="3"];
+    kk_src_monitor -> kk_src_agent_agent_decide_and_execute [fillcolor="#ceb93b",minlen="2",weight="2"];
+    kk_src_monitor -> kk_src_trade_order [fillcolor="#ceb93b",minlen="2",weight="2"];
+    kk_src_monitor_metrics -> kk_src_agent_agent_decide_and_execute [fillcolor="#ccb633",minlen="2",weight="2"];
+    kk_src_monitor_metrics -> kk_src_trade_order [fillcolor="#ccb633",minlen="2",weight="2"];
+    kk_src_risk -> kk_src_agent_agent_decide_and_execute [fillcolor="#c2b147",minlen="2",weight="2"];
+    kk_src_risk_trailing -> kk_src_agent_agent_decide_and_execute [fillcolor="#c2b147",minlen="2",weight="2"];
+    kk_src_storage -> kk_src_agent_agent_decide_and_execute [fillcolor="#c2b147",minlen="2",weight="2"];
+    kk_src_storage_ensure_schema -> kk_src_agent_agent_decide_and_execute [fillcolor="#c0ad40",minlen="2",weight="2"];
+    openai -> kk_src_agent_llm_agent [fillcolor="#5fcc33",minlen="4"];
+    openai -> kk_ws_main [fillcolor="#5fcc33",minlen="2"];
+    prometheus_client -> kk_src_monitor_metrics [fillcolor="#33cc8a",minlen="4"];
+    prometheus_client -> kk_ws_main [fillcolor="#33cc8a",minlen="2"];
+    redis -> kk_src_intent_cache [fillcolor="#4089c0",minlen="3"];
+    requests -> kk_src_llm_local_client [fillcolor="#5926d9",minlen="3"];
+    requests -> kk_src_storage_ensure_schema [fillcolor="#5926d9",minlen="4"];
+    requests -> kk_src_trade_market [fillcolor="#5926d9",minlen="4"];
+    weaviate -> kk_src_storage_ensure_tradelog [fillcolor="blue",minlen="4"];
+    weaviate -> kk_src_storage_weaviate_client [fillcolor="blue",minlen="4"];
+    weaviate -> kk_src_storage_weaviate_schema [fillcolor="blue",minlen="4"];
+    weaviate_collections -> kk_src_storage_ensure_tradelog [fillcolor="blue",minlen="4"];
+    weaviate_collections -> weaviate [fillcolor="blue"];
+    weaviate_collections_classes -> kk_src_storage_ensure_tradelog [fillcolor="#c247b1",minlen="4"];
+    weaviate_collections_classes_config -> kk_src_storage_ensure_tradelog [fillcolor="#9d4390",minlen="4"];
+    weaviate_connect -> kk_src_storage_ensure_tradelog [fillcolor="#ce3bb9",minlen="4"];
+    weaviate_connect -> kk_src_storage_weaviate_client [fillcolor="#ce3bb9",minlen="4"];
+    weaviate_connect -> weaviate [fillcolor="#ce3bb9"];
+    weaviate_exceptions -> kk_src_storage_ensure_tradelog [fillcolor="#ce3bb9",minlen="4"];
+    weaviate_exceptions -> weaviate [fillcolor="#ce3bb9"];
+    weaviate_exceptions -> weaviate_collections_classes_config [fillcolor="#ce3bb9",minlen="3"];
+
+
+    concentrate = true;
+
+    rankdir = TB;
+    node [style=filled,fillcolor="#ffffff",fontcolor="#000000",fontname=Helvetica,fontsize=10];
+
+    meilisearch [fillcolor="#c04040",fontcolor="#ffffff"];
+    redis [fillcolor="#aecc33"];
+    requests [fillcolor="#40c073"];
+    weaviate [fillcolor="#4073c0",fontcolor="#ffffff"];
+    windking_ingest_collector [fillcolor="#9849ac",fontcolor="#ffffff",label="windking\.\ningest\.\ncollector"];
+    windking_ingest_etl_loader [fillcolor="#9246a4",fontcolor="#ffffff",label="windking\.\ningest\.\netl_loader"];
+    meilisearch -> windking_ingest_etl_loader [fillcolor="#c04040",minlen="3"];
+    redis -> windking_ingest_collector [fillcolor="#aecc33",minlen="3"];
+    redis -> windking_ingest_etl_loader [fillcolor="#aecc33",minlen="3"];
+    requests -> windking_ingest_collector [fillcolor="#40c073",minlen="3"];
+    weaviate -> windking_ingest_etl_loader [fillcolor="#4073c0",minlen="3"];
+
+
+    concentrate = true;
+
+    rankdir = TB;
+    node [style=filled,fillcolor="#ffffff",fontcolor="#000000",fontname=Helvetica,fontsize=10];
+
+
+}

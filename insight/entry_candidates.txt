@@ -14,7 +14,6 @@ kk.src.llm_local_client
 kk.src.logging
 kk.src.logging.schema
 kk.src.monitor
-kk.src.monitor.metrics
 kk.src.optimizer
 kk.src.risk
 kk.src.risk.dynamic
@@ -22,7 +21,6 @@ kk.src.risk.manager
 kk.src.storage
 kk.src.storage.ensure_schema
 kk.src.storage.ensure_tradelog
-kk.src.storage.weaviate_client
 kk.src.storage.weaviate_schema
 kk.src.trade
 kk.src.trade.market
