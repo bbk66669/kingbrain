@@ -1,41 +1,12 @@
-# —— 使用你充值的 Claude —— 
-# 精确匹配你的可用模型列表：claude-3-7-sonnet-20250219
+# 使用你的 Claude 充值模型（与你列出的清单匹配）
 model: anthropic/claude-3-7-sonnet-20250219
 editor-model: anthropic/claude-3-7-sonnet-20250219
 
-# 自动为每个小改动提交最小 diff（更安全、便于回滚）
+# 自动生成最小 diff 的提交
 auto-commits: true
 dirty-commits: false
 
-# 每轮对话自动创建分支，命名：pr-YYYYMMDD-HHMMSS（不污染 main）
-branch: "pr-{{date:%Y%m%d-%H%M%S}}"
-
-# 仅允许动这些路径（与 /.collab/paths.allowlist.yaml 对齐）
-include:
-  - "/orchestrator/**"
-  - "/services/**"
-  - "/scripts/**"
-  - "/docs/kingbrain/**"
-  - "/observability/**"
-  - "/strategy/ci/**"
-  - "/ml/**"
-  - "/.collab/**"
-  - "/tools/**"
-  - "/apps/**"                  # Backstage app/plugins 需要
-
-# 明确禁止（保护区）
-exclude:
-  - "/.collab/tools/**"         # 后续真实协作区，当前禁止动
-  - "/.collab/kb-validate/**"   # 校验配置保留区
-  - "/k8s/manifests/**"
-  - "/grafana/**"               # 避免误改只读 dashboard JSON
-  - "/.git/**"
-  - "/configs/registry/**"
-  - "/preference/models/**"
-  - "/security/**"
-  - "/terraform/**"
-
-# 让 commit message 更有用：包含自测/回滚指引
+# 写明确的提交说明（自测/回滚）
 commit-prompt: |
-  写清：变更目的、改了哪些文件、如何自测（make/curl/kubectl）、如何回滚（rollout undo 或 git revert）。
-  严格最小化 diff，禁止大面积格式化或无关重排。
+  写清：变更目的、修改文件、如何自测（make/curl/kubectl）、如何回滚（rollout undo 或 git revert）。
+  严格最小化 diff，禁止无关格式化/重排。

@@ -1,0 +1,12 @@
+# —— 禁止 Aider 读/改的区域（与 paths.allowlist 保持一致的“保护区”）——
+/.collab/tools/**
+/.collab/kb-validate/**
+/k8s/manifests/**
+/grafana/**
+/configs/registry/**
+/preference/models/**
+/security/**
+/terraform/**
+/.git/**
+
+# 根据需要再加更多只读区域…
