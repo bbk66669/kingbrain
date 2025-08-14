@@ -84,3 +84,7 @@ kyverno-cli_*.tar.gz
 # -------- 只忽略这个“单个文件”，不影响同目录其他文件 ----------
 insight/extsvc.json
 .aider*
+
+# runtime audit logs (do not commit)
+/.collab/audit/
+/.collab/**/events-*.jsonl
