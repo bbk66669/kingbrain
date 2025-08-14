@@ -11,8 +11,8 @@ allow:
   - "/strategy/ci/**"
   - "/.collab/**"
   - "/docs/**"
-  - "/tools/**"                 # 新增：顶层 tools 允许（供 Claude 使用）
-  - "/.collab/bootstrap-tools/**"  # 新增：只允许 bootstrap-tools（供 Claude 使用）
+  - "/tools/**"                   # 顶层 tools 允许（供 AI/Claude 使用）
+  - "/.collab/bootstrap-tools/**" # 仅此处可放“bootstrap”阶段占位脚本
 
 deny:
   - "/.git/**"
@@ -21,16 +21,13 @@ deny:
   - "/security/**"                # 准入策略
   - "/terraform/**"
   # 明确禁止当前阶段触碰的协作区（即使 /.collab/** 被允许，这里也会覆盖禁止）
-  - "/.collab/tools/**"           # 保留给后续真实 AI 协作，现阶段禁止
-  - "/.collab/kb-validate/**"     # 同上，禁止改动
-# 若后续需屏蔽生成物，可再追加：
-# deny:
-#   - "/k8s/manifests/generated/**"
+  - "/.collab/tools/**"           # 预留给后续真实 AI 协作，现阶段禁止修改
+  - "/.collab/kb-validate/**"     # 校验配置保留区，禁止修改
 
 # 只读目录（AI 可读不可写）——仅用于标注；实际生效以 allow/deny/writable 为准
 readonly:
-  - "/k8s/manifests/**/*.yaml"      # 所有 YAML 可读不可写
-  - "/docs/kingbrain/**"            # 顶层只读，但具体可写子目录见 writable
+  - "/k8s/manifests/**/*.yaml"    # 所有 YAML 可读不可写
+  - "/docs/kingbrain/**"          # 顶层只读，但具体可写子目录见 writable
   - "/grafana/dashboards/**/*.json"
 
 # 可写目录（AI 阶段性写入＆修改）——允许写入需同时命中 allow 与 writable；deny 仍优先生效
@@ -45,6 +42,13 @@ writable:
   - "/docs/kingbrain/BORROW/**"
   - "/docs/kingbrain/DIFF/**"
   - "/.collab/CR/**"
+
+  # —— 下面这些是 FAKE/REAL 都会用到的内部产物/审计/证据路径 —— 
+  - "/.collab/PLAN/**"            # manifest-*.json 会写这里
+  - "/.collab/DIFF/**"            # diff-*.patch 会写这里
+  - "/.collab/evidence/**"        # sbom/attestations/policy 占位
+  - "/.collab/audit/**"           # events-YYYYMMDD.jsonl（CloudEvents 本地副本）
+  - "/.collab/DRYRUN/**"          # 无凭据时的拟提交日志
+
   - "/reports/**"
 # --------------------------------------------
-
