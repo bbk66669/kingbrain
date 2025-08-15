@@ -1,6 +1,6 @@
-# 使用你的 Claude 充值模型（与你列出的清单匹配）
-model: anthropic/claude-3-7-sonnet-20250219
-editor-model: anthropic/claude-3-7-sonnet-20250219
+# 使用 OpenAI 的 o3 模型
+model: openai/o3-2025-04-16
+editor-model: openai/o3-2025-04-16
 
 # 自动生成最小 diff 的提交
 auto-commits: true
