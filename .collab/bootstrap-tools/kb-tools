@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bootstrap 版：validate / lock-hash 的“占位通过”，不触碰你的原始规则
+# bootstrap 版：validate / lock-hash 的"占位通过"，不触碰你的原始规则
 set -euo pipefail
 case "${1:-}" in
   validate)   echo "OK: bootstrap validate passed (FAKE)";;

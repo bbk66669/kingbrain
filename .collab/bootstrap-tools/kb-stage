@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bootstrap 版：只为“提前准备/FAKE链路验收”提供最小壳
+# bootstrap 版：只为"提前准备/FAKE链路验收"提供最小壳
 set -euo pipefail
 BASE="${KB_API_BASE:-http://kb.mwwnd.org/kb-api}"
 PHASE="${1:-}"; TASK="${2:-scaffold}"; WAIT="${WAIT:-0}"
