@@ -10,7 +10,9 @@ COPY . /app/
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV REPO_ROOT=/workspace
+# repo root must be identical to the hostPath mount so that written
+# files are visible on the node
+ENV REPO_ROOT=/srv/kingbrain
 
 # Expose port
 EXPOSE 8000

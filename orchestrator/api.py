@@ -7,330 +7,308 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
 import yaml
+import re
 
-# Configure logging
+# ------------------------------------------------------------
+# logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("kb-orchestrator")
 
-# Constants
-REPO_ROOT = os.environ.get("REPO_ROOT", "/workspace")
+# ------------------------------------------------------------
+# constants & env
+DEFAULT_REPO_ROOT = "/srv/kingbrain"
+REPO_ROOT = os.environ.get("REPO_ROOT", DEFAULT_REPO_ROOT)
 KB_MODE = os.environ.get("KB_MODE", "AUTO")
-NATS_URL = os.environ.get("NATS_URL", "nats://kb-nats.orchestrator.svc.cluster.local:4222")
-TEMPORAL_URL = os.environ.get("TEMPORAL_URL", "temporal-frontend.orchestrator.svc.cluster.local:7233")
 
-# CloudEvents constants
+NATS_URL = os.environ.get(
+    "NATS_URL", "nats://kb-nats.orchestrator.svc.cluster.local:4222"
+)
+TEMPORAL_URL = os.environ.get(
+    "TEMPORAL_URL", "temporal-frontend.orchestrator.svc.cluster.local:7233"
+)
+
+# cloud-events constants
 CLOUD_EVENT_SPEC_VERSION = "1.0"
 CLOUD_EVENT_SOURCE = "kb-orchestrator"
 
-# Path for audit logs
+# path for audit logs
 AUDIT_DIR = os.path.join(REPO_ROOT, ".collab/audit")
 os.makedirs(AUDIT_DIR, exist_ok=True)
 
-# Allowlist path
+# allow-list path
 ALLOWLIST_PATH = os.path.join(REPO_ROOT, ".collab/paths.allowlist.yaml")
+
 
 class KBOrchestrator:
     def __init__(self):
         self.mode = self._determine_mode()
         self.nats_client = None
         self.temporal_client = None
-        
-        # Try to initialize NATS client (non-blocking)
+
         self._init_nats()
-        
-        # Try to initialize Temporal client (non-blocking)
         self._init_temporal()
-        
-        # Load allowlist
+
+        # load allow-list
         self.allowlist = self._load_allowlist()
-        
-        logger.info(f"KB Orchestrator initialized in {self.mode} mode")
-    
+
+        logger.info("KB Orchestrator initialized in %s mode", self.mode)
+
+    # -----------------------------------------------------------------
+    # helpers
+
     def _determine_mode(self) -> str:
-        """Determine if we're in FAKE or REAL mode based on environment"""
-        if KB_MODE.upper() == "FAKE":
-            return "FAKE"
-        elif KB_MODE.upper() == "REAL":
-            return "REAL"
-        
-        # AUTO mode - check for LLM API keys
-        has_openai = bool(os.environ.get("OPENAI_API_KEY"))
-        has_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY"))
-        has_azure = bool(os.environ.get("AZURE_OPENAI_KEY"))
-        
-        if has_openai or has_anthropic or has_azure:
-            return "REAL"
-        else:
-            return "FAKE"
-    
+        explicit = KB_MODE.upper()
+        if explicit in ("FAKE", "REAL"):
+            return explicit
+
+        has_openai = bool(os.getenv("OPENAI_API_KEY"))
+        has_anthropic = bool(os.getenv("ANTHROPIC_API_KEY"))
+        has_azure = bool(os.getenv("AZURE_OPENAI_KEY"))
+        return "REAL" if any((has_openai, has_anthropic, has_azure)) else "FAKE"
+
     def _init_nats(self):
-        """Initialize NATS client (non-blocking)"""
         try:
-            # Placeholder for actual NATS client initialization
-            # We're not actually connecting in this PR, just simulating
-            logger.info(f"NATS would connect to {NATS_URL}")
+            logger.info("NATS would connect to %s", NATS_URL)
             self.nats_available = True
-        except Exception as e:
-            logger.warning(f"Failed to initialize NATS client: {e}")
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Failed to init NATS: %s", exc)
             self.nats_available = False
-    
+
     def _init_temporal(self):
-        """Initialize Temporal client (non-blocking)"""
         try:
-            # Placeholder for actual Temporal client initialization
-            # We're not actually connecting in this PR, just simulating
-            logger.info(f"Temporal would connect to {TEMPORAL_URL}")
+            logger.info("Temporal would connect to %s", TEMPORAL_URL)
             self.temporal_available = True
-        except Exception as e:
-            logger.warning(f"Failed to initialize Temporal client: {e}")
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Failed to init Temporal: %s", exc)
             self.temporal_available = False
-    
-    def _load_allowlist(self) -> Dict:
-        """Load the allowlist configuration"""
+
+    # --------------------------------------------------
+    # allow-list helpers
+
+    def _load_allowlist(self) -> Dict[str, Any]:
         try:
-            with open(ALLOWLIST_PATH, 'r') as f:
-                return yaml.safe_load(f)
-        except Exception as e:
-            logger.error(f"Failed to load allowlist: {e}")
-            # Return a default restrictive allowlist
+            with open(ALLOWLIST_PATH, "r") as fh:
+                return yaml.safe_load(fh)
+        except Exception as exc:  # pragma: no cover
+            logger.error("Failed to load allow-list: %s", exc)
             return {"allow": [], "deny": ["**"], "writable": []}
-    
+
+    def _path_matches_pattern(self, path: str, pattern: str) -> bool:
+        tmp = re.escape(pattern)
+        tmp = tmp.replace(r"\*\*", ".*").replace(r"\*", "[^/]*")
+        if not tmp.endswith(".*") and not tmp.endswith("$"):
+            tmp += "$"
+        return bool(re.match(tmp, path))
+
     def _check_path_allowed(self, path: str) -> Tuple[bool, str]:
-        """
-        Check if a path is allowed according to allowlist rules
-        Returns (allowed, reason)
-        """
-        # Strip /workspace prefix if present
-        if path.startswith("/workspace"):
-            path = path[len("/workspace"):]
-        
-        # Ensure path starts with /
+        # normalise and strip known prefixes
+        for prefix in ("/workspace", REPO_ROOT):
+            if path.startswith(prefix):
+                path = path[len(prefix):]
         if not path.startswith("/"):
             path = "/" + path
-        
-        # Check deny list first (deny has priority)
-        for pattern in self.allowlist.get("deny", []):
-            if self._path_matches_pattern(path, pattern):
-                return False, f"Path {path} matches deny pattern: {pattern}"
-        
-        # Check if path is both allowed and writable
-        allowed = False
-        for pattern in self.allowlist.get("allow", []):
-            if self._path_matches_pattern(path, pattern):
-                allowed = True
-                break
-        
-        if not allowed:
-            return False, f"Path {path} is not in allow list"
-        
-        writable = False
-        for pattern in self.allowlist.get("writable", []):
-            if self._path_matches_pattern(path, pattern):
-                writable = True
-                break
-        
-        if not writable:
-            return False, f"Path {path} is not in writable list"
-        
+
+        # deny dominates
+        for patt in self.allowlist.get("deny", []):
+            if self._path_matches_pattern(path, patt):
+                return False, f"path {path} matches deny pattern {patt}"
+
+        # must be in allow
+        if not any(self._path_matches_pattern(path, patt)
+                   for patt in self.allowlist.get("allow", [])):
+            return False, f"path {path} is not in allow list"
+
+        # and must be writable
+        if not any(self._path_matches_pattern(path, patt)
+                   for patt in self.allowlist.get("writable", [])):
+            return False, f"path {path} is not in writable list"
+
         return True, ""
-    
-    def _path_matches_pattern(self, path: str, pattern: str) -> bool:
-        """Simple pattern matching for paths"""
-        # Convert ** to proper regex
-        if "**" in pattern:
-            pattern = pattern.replace("**", ".*")
-        # Convert * to proper regex (but not matching /)
-        if "*" in pattern:
-            pattern = pattern.replace("*", "[^/]*")
-        
-        # Escape other regex special chars
-        import re
-        pattern = re.escape(pattern).replace("\\[", "[").replace("\\]", "]").replace("\\.\\*", ".*").replace("\\[\\^/\\]\\*", "[^/]*")
-        
-        # Add start/end anchors
-        if not pattern.endswith(".*"):
-            pattern += "$"
-        
-        return bool(re.match(pattern, path))
-    
+
+    # --------------------------------------------------
+    # cloud-events helpers
+
     def _get_audit_file_path(self) -> str:
-        """Get the path to today's audit log file"""
-        today = datetime.now().strftime("%Y%m%d")
+        today = datetime.utcnow().strftime("%Y%m%d")
         return os.path.join(AUDIT_DIR, f"events-{today}.jsonl")
-    
-    def _write_cloud_event(self, event_type: str, workflow_id: str, data: Dict) -> str:
-        """
-        Write a CloudEvent to NATS and local audit log
-        Returns the event ID
-        """
-        event_id = str(uuid.uuid4())
-        
-        cloud_event = {
-            "id": event_id,
+
+    def _write_cloud_event(self, ev_type: str, workflow_id: str, data: Dict) -> str:
+        ev_id = str(uuid.uuid4())
+        event = {
+            "id": ev_id,
             "source": CLOUD_EVENT_SOURCE,
             "specversion": CLOUD_EVENT_SPEC_VERSION,
-            "type": event_type,
+            "type": ev_type,
             "subject": workflow_id,
             "time": datetime.utcnow().isoformat() + "Z",
-            "data": data
+            "data": data,
         }
-        
-        # Try to publish to NATS (if available)
+
         if self.nats_available:
             try:
-                # Placeholder for actual NATS publish
-                logger.info(f"Would publish to NATS: {event_type}")
-            except Exception as e:
-                logger.warning(f"Failed to publish to NATS: {e}")
-        
-        # Always write to local audit log (even if NATS fails)
+                logger.info("Would publish CloudEvent (%s) to NATS", ev_type)
+            except Exception as exc:  # pragma: no cover
+                logger.warning("NATS publish failed: %s", exc)
+
         try:
-            audit_file = self._get_audit_file_path()
-            os.makedirs(os.path.dirname(audit_file), exist_ok=True)
-            with open(audit_file, 'a') as f:
-                f.write(json.dumps(cloud_event) + "\n")
-        except Exception as e:
-            logger.error(f"Failed to write to audit log: {e}")
-        
-        return event_id
-    
-    def get_config(self) -> Dict:
-        """Get the current configuration"""
-        llm_providers = []
-        if os.environ.get("OPENAI_API_KEY"):
-            llm_providers.append("openai")
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            llm_providers.append("anthropic")
-        if os.environ.get("AZURE_OPENAI_KEY"):
-            llm_providers.append("azure")
-        
+            fp = self._get_audit_file_path()
+            Path(fp).parent.mkdir(parents=True, exist_ok=True)
+            with open(fp, "a") as fh:
+                fh.write(json.dumps(event) + "\n")
+        except Exception as exc:  # pragma: no cover
+            logger.error("Failed to write audit log: %s", exc)
+
+        return ev_id
+
+    # --------------------------------------------------
+    # public helpers for Flask server
+
+    def get_config(self) -> Dict[str, Any]:
+        providers = [
+            name for name, key in (
+                ("openai", os.getenv("OPENAI_API_KEY")),
+                ("anthropic", os.getenv("ANTHROPIC_API_KEY")),
+                ("azure", os.getenv("AZURE_OPENAI_KEY")),
+            ) if key
+        ]
+
         return {
             "mode": self.mode,
-            "llm_providers_detected": llm_providers,
+            "llm_providers_detected": providers,
             "events_sink": "nats+file" if self.nats_available else "file",
             "repo_root": REPO_ROOT,
             "deps": {
-                "nats": {
-                    "available": self.nats_available,
-                    "url": NATS_URL
-                },
-                "temporal": {
-                    "available": self.temporal_available,
-                    "url": TEMPORAL_URL
-                }
-            }
+                "nats": {"available": self.nats_available, "url": NATS_URL},
+                "temporal": {"available": self.temporal_available, "url": TEMPORAL_URL},
+            },
         }
-    
-    def get_event(self, event_id: str) -> Optional[Dict]:
-        """Retrieve a specific event from the audit log"""
+
+    def get_event(self, ev_id: str) -> Optional[Dict[str, Any]]:
         try:
-            # Check all audit files, starting with today
-            today = datetime.now().strftime("%Y%m%d")
-            audit_files = [f for f in os.listdir(AUDIT_DIR) if f.startswith("events-")]
-            
-            # Sort in reverse chronological order
-            audit_files.sort(reverse=True)
-            
-            for file_name in audit_files:
-                file_path = os.path.join(AUDIT_DIR, file_name)
-                with open(file_path, 'r') as f:
-                    for line in f:
+            files = sorted(
+                (f for f in os.listdir(AUDIT_DIR) if f.startswith("events-")),
+                reverse=True,
+            )
+            for fname in files:
+                with open(os.path.join(AUDIT_DIR, fname)) as fh:
+                    for line in fh:
                         try:
-                            event = json.loads(line)
-                            if event.get("id") == event_id:
-                                return event
+                            ev = json.loads(line)
+                            if ev.get("id") == ev_id:
+                                return ev
                         except json.JSONDecodeError:
                             continue
-            
             return None
-        except Exception as e:
-            logger.error(f"Error retrieving event {event_id}: {e}")
+        except Exception as exc:  # pragma: no cover
+            logger.error("Error retrieving event %s: %s", ev_id, exc)
             return None
-    
-    def process_workflow(self, task: str, notes: str, phase: str, 
-                         paths_to_write: List[str] = None) -> Dict:
-        """
-        Process a workflow request
-        Returns the workflow result or error
-        """
+
+    # --------------------------------------------------
+    # main entry – process_workflow
+
+    def _ensure_file(self, path: str, content: str = ""):
+        try:
+            p = Path(path)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            if not p.exists():
+                p.write_text(content, encoding="utf-8")
+        except Exception as exc:  # pragma: no cover
+            logger.warning("Failed to create placeholder %s: %s", path, exc)
+
+    def _default_written_paths(self, phase: str, wid: str) -> List[str]:
+        if phase == "PLAN":
+            return [
+                f"{REPO_ROOT}/docs/kingbrain/PLAN/PLAN.md",
+                f"{REPO_ROOT}/.collab/PLAN/manifest-{wid[:8]}.json",
+            ]
+        if phase == "BORROW":
+            return [f"{REPO_ROOT}/docs/kingbrain/BORROW/BorrowedArtifacts.yaml"]
+        if phase == "DIFF":
+            return [f"{REPO_ROOT}/.collab/DIFF/diff-{wid[:8]}.patch"]
+        if phase == "CR":
+            return [f"{REPO_ROOT}/.collab/CR/CR-draft-{wid[:8]}.yaml"]
+        # ACK or fallback
+        return [f"{REPO_ROOT}/.collab/{phase}/placeholder-{wid[:8]}.txt"]
+
+    def process_workflow(
+        self,
+        task: str,
+        notes: str,
+        phase: str,
+        paths_to_write: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
         workflow_id = str(uuid.uuid4())
         run_id = str(uuid.uuid4())
-        
-        # Check if paths are allowed
+
+        # --------------------------------------------------
+        # 1) guard paths
         if paths_to_write:
-            for path in paths_to_write:
-                allowed, reason = self._check_path_allowed(path)
-                if not allowed:
-                    # Path not allowed, emit rejected event
-                    event_type = f"kb.workflow.{phase}.rejected.v1"
-                    event_data = {
-                        "phase": phase,
-                        "mode": self.mode,
-                        "reason": reason
-                    }
-                    event_id = self._write_cloud_event(event_type, workflow_id, event_data)
-                    
+            for p in paths_to_write:
+                ok, reason = self._check_path_allowed(p)
+                if not ok:
+                    ev_id = self._write_cloud_event(
+                        f"kb.workflow.{phase}.rejected.v1",
+                        workflow_id,
+                        {"phase": phase, "mode": self.mode, "reason": reason},
+                    )
                     return {
                         "error": "path not allowed",
                         "detail": reason,
                         "workflow_id": workflow_id,
-                        "event_id": event_id
+                        "event_id": ev_id,
                     }
-        
-        # Emit started event
-        started_event_type = f"kb.workflow.{phase}.started.v1"
-        started_event_data = {
-            "phase": phase,
-            "mode": self.mode,
-            "task": task,
-            "notes": notes
-        }
-        started_event_id = self._write_cloud_event(started_event_type, workflow_id, started_event_data)
-        
-        # In FAKE mode, we just simulate a successful workflow
-        # In REAL mode, we would actually execute the workflow via Temporal
-        
-        # Simulate some processing time
-        time.sleep(0.1)
-        
-        # Example paths that would be written in a real workflow
-        written_paths = paths_to_write or [
-            f"{REPO_ROOT}/docs/kingbrain/{phase}/result-{workflow_id[:8]}.md",
-            f"{REPO_ROOT}/.collab/{phase}/manifest-{workflow_id[:8]}.json"
-        ]
-        
-        # Example evidence references
+
+        # --------------------------------------------------
+        # 2) started event
+        started_id = self._write_cloud_event(
+            f"kb.workflow.{phase}.started.v1",
+            workflow_id,
+            {"phase": phase, "mode": self.mode, "task": task, "notes": notes},
+        )
+
+        # --------------------------------------------------
+        # 3) simulate processing & write placeholders
+        time.sleep(0.1)  # FAKE latency
+
+        written = paths_to_write or self._default_written_paths(phase, workflow_id)
+        for fp in written:
+            self._ensure_file(fp, f"# Placeholder generated for {phase}\n")
+
         evidence_refs = [
-            f"sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-            f"sbom:{workflow_id}"
+            "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            f"sbom:{workflow_id}",
         ]
-        
-        # Emit completed event
-        completed_event_type = f"kb.workflow.{phase}.completed.v1"
-        completed_event_data = {
-            "phase": phase,
-            "mode": self.mode,
-            "written": written_paths,
-            "evidenceRefs": evidence_refs
-        }
-        completed_event_id = self._write_cloud_event(completed_event_type, workflow_id, completed_event_data)
-        
-        # Return the result
+
+        # --------------------------------------------------
+        # 4) completed event
+        completed_id = self._write_cloud_event(
+            f"kb.workflow.{phase}.completed.v1",
+            workflow_id,
+            {
+                "phase": phase,
+                "mode": self.mode,
+                "written": written,
+                "evidenceRefs": evidence_refs,
+            },
+        )
+
         return {
             "workflow_id": workflow_id,
             "run_id": run_id,
             "result": {
                 "phase": phase,
-                "written_paths": written_paths,
+                "written_paths": written,
                 "evidence_refs": evidence_refs,
-                "cloudevent_ids": [started_event_id, completed_event_id],
+                "cloudevent_ids": [started_id, completed_id],
                 "ts": int(time.time()),
-                "mode": self.mode
-            }
+                "mode": self.mode,
+            },
         }
 
-# Create a singleton instance
+
+# ---------------------------------------------------------------------
+# singleton
 orchestrator = KBOrchestrator()

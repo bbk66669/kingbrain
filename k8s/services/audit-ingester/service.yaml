@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kb-audit-ingester
+  namespace: orchestrator
+spec:
+  selector:
+    app: kb-audit-ingester
+  ports:
+    - port: 8082
+      targetPort: 8082

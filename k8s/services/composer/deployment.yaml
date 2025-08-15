@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kb-composer
+  namespace: orchestrator
+spec:
+  selector:
+    matchLabels:
+      app: kb-composer
+  template:
+    metadata:
+      labels:
+        app: kb-composer
+    spec:
+      volumes:
+        - name: workspace
+          hostPath:
+            path: /srv/kingbrain
+            type: Directory
+      containers:
+        - name: kb-composer
+          image: python:3.11-slim
+          volumeMounts:
+            - name: workspace
+              mountPath: /srv/kingbrain
+              readOnly: false
+          command: ["/bin/sh", "-lc"]
+          args:
+            - |
+              set -e
+              if [ -f /srv/kingbrain/services/composer/requirements.txt ]; then
+                pip install --no-cache-dir -r /srv/kingbrain/services/composer/requirements.txt
+              fi
+              exec uvicorn services.composer.main:app --host 0.0.0.0 --port 8081
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10

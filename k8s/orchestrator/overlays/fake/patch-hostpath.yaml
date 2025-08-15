@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kb-orchestrator
+  namespace: orchestrator
+spec:
+  template:
+    spec:
+      volumes:
+        - name: workspace
+          hostPath:
+            path: /srv/kingbrain
+            type: Directory
+      containers:
+        - name: api
+          volumeMounts:
+            - name: workspace
+              mountPath: /srv/kingbrain
+              readOnly: false
