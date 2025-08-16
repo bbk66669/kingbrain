@@ -1,6 +1,6 @@
-# 使用你的 Claude 充值模型（与你列出的清单匹配）
-model: anthropic/claude-3-7-sonnet-20250219
-editor-model: anthropic/claude-3-7-sonnet-20250219
+# 使用 Claude Sonnet 4 模型
+model: anthropic/claude-sonnet-4-20250514
+editor-model: anthropic/claude-sonnet-4-20250514
 
 # 自动生成最小 diff 的提交
 auto-commits: true
