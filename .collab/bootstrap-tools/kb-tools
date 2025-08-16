@@ -1,8 +1,22 @@
 #!/usr/bin/env bash
-# bootstrap 版：validate / lock-hash 的"占位通过"，不触碰你的原始规则
+# bootstrap 版：validate / lock-hash 的"占位通过"，调用 /kb-api/
 set -euo pipefail
+BASE="${KB_API_BASE:-http://kb.mwwnd.org/kb-api}"
+
 case "${1:-}" in
-  validate)   echo "OK: bootstrap validate passed (FAKE)";;
-  lock-hash)  echo "OK: bootstrap lock-hash updated (FAKE)";;
-  *) echo "usage: kb-tools {validate|lock-hash}"; exit 0;;
+  validate)
+    RESP="$(curl -sS -X POST "$BASE/plan" -H 'Content-Type: application/json' -d '{"task":"validate","notes":"bootstrap"}')"
+    ERROR="$(echo "$RESP" | jq -r '.error // empty')"
+    [ -n "$ERROR" ] && { echo "Error: $ERROR" >&2; exit 1; }
+    echo "OK: bootstrap validate passed (FAKE)"
+    ;;
+  lock-hash)
+    RESP="$(curl -sS -X POST "$BASE/plan" -H 'Content-Type: application/json' -d '{"task":"lock-hash","notes":"bootstrap"}')"
+    ERROR="$(echo "$RESP" | jq -r '.error // empty')"
+    [ -n "$ERROR" ] && { echo "Error: $ERROR" >&2; exit 1; }
+    echo "OK: bootstrap lock-hash updated (FAKE)"
+    ;;
+  *)
+    echo "usage: kb-tools {validate|lock-hash}"; exit 0
+    ;;
 esac

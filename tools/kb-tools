@@ -2,7 +2,14 @@
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/.." && pwd)"
-if [ "${KB_BOOTSTRAP:-0}" = "1" ] && [ -x "$ROOT/.collab/bootstrap-tools/kb-tools" ]; then
-  exec "$ROOT/.collab/bootstrap-tools/kb-tools" "$@"
+BOOTSTRAP_TOOLS="$ROOT/.collab/bootstrap-tools/kb-tools"
+
+if [ "${KB_BOOTSTRAP:-0}" != "1" ]; then
+  echo "Error: KB_BOOTSTRAP must be set to 1" >&2
+  exit 1
 fi
-exec "$ROOT/.collab/tools/kb-tools" "$@"
+if [ ! -x "$BOOTSTRAP_TOOLS" ]; then
+  echo "Error: $BOOTSTRAP_TOOLS not found or not executable" >&2
+  exit 1
+fi
+exec "$BOOTSTRAP_TOOLS" "$@"

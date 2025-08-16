@@ -2,9 +2,25 @@
 # bootstrap 版：只为"提前准备/FAKE链路验收"提供最小壳
 set -euo pipefail
 BASE="${KB_API_BASE:-http://kb.mwwnd.org/kb-api}"
-PHASE="${1:-}"; TASK="${2:-scaffold}"; WAIT="${WAIT:-0}"
-[ -z "$PHASE" ] && { echo "usage: kb-stage <ack|plan|borrow|diff|cr> [task]"; exit 1; }
+WAIT=false
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --wait)
+      WAIT=true
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+PHASE="${1:-}"; TASK="${2:-scaffold}"
+[ -z "$PHASE" ] && { echo "usage: kb-stage [--wait] <ack|plan|borrow|diff|cr> [task]"; exit 1; }
 RESP="$(curl -sS -X POST "$BASE/$PHASE" -H 'Content-Type: application/json' -d "{\"task\":\"$TASK\",\"notes\":\"bootstrap\"}")"
-echo "$RESP" | jq .
+ERROR="$(echo "$RESP" | jq -r '.error // empty')"
+[ -n "$ERROR" ] && { echo "Error: $ERROR" >&2; exit 1; }
+echo "$RESP" | jq '{mode: .result.mode, event_ids: .result.cloudevent_ids, written_paths: .result.written_paths}'
 WID="$(echo "$RESP" | jq -r '.workflow_id // empty')"
-[ -n "$WID" ] && [ "$WAIT" != "0" ] && curl -sS "$BASE/runs/$WID?wait=$WAIT" | jq .
+[ -n "$WID" ] && [ "$WAIT" = "true" ] && curl -sS "$BASE/runs/$WID?wait=1" | jq .
