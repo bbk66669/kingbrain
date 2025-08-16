@@ -5,5 +5,6 @@ metadata:
   namespace: orchestrator
 spec:
   template:
-    spec:
-      serviceAccountName: kb-runner
+    metadata:
+      labels:
+        kb-placeholder: "true"
