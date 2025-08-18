@@ -2,53 +2,68 @@
 # --------------------------------------------
 # 只允许 AI 写入 / 修改以下路径；其他路径视为只读
 allow:
-  - "/apps/**"
-  - "/services/**"
-  - "/scripts/**"
-  - "/ml/**"
-  - "/observability/**"
-  - "/orchestrator/**"
-  - "/strategy/ci/**"
-  - "/.collab/**"
-  - "/docs/**"
-  - "/tools/**"                   # 顶层 tools 允许（供 AI/Claude 使用）
-  - "/.collab/bootstrap-tools/**" # 仅此处可放“bootstrap”阶段占位脚本
+  - "/apps/"
+  - "/services/"
+  - "/scripts/"
+  - "/ml/"
+  - "/observability/"
+  - "/orchestrator/"
+  - "/strategy/ci/"
+  - "/.collab/"
+  - "/docs/"
+  - "/tools/"                   # 顶层 tools 允许（供 aider 使用）
+  - "/.collab/bootstrap-tools/" # 仅此处可放“bootstrap”阶段占位脚本
+  - "/k8s/"                     # 为引入 hostPath、部署组件留白名单
+  - "/.github/workflows/"       # CI/CD 流水线
+  - "/Makefile"                 # 根目录单文件
 
 deny:
-  - "/.git/**"
-  - "/configs/registry/**"        # 受控
-  - "/preference/models/**"       # 需双签
-  - "/security/**"                # 准入策略
-  - "/terraform/**"
-  # 明确禁止当前阶段触碰的协作区（即使 /.collab/** 被允许，这里也会覆盖禁止）
-  - "/.collab/tools/**"           # 预留给后续真实 AI 协作，现阶段禁止修改
-  - "/.collab/kb-validate/**"     # 校验配置保留区，禁止修改
+  - "/.git/"
+  - "/configs/registry/"        # 受控
+  - "/preference/models/"       # 需双签
+  - "/security/"                # 准入策略
+  - "/terraform/"
+  # 明确禁止当前阶段触碰的协作区（即使 /.collab/ 被允许，这里也会覆盖禁止）
+  - "/.collab/tools/"           # 预留给后续真实 AI 协作，现阶段禁止修改
+  - "/.collab/kb-validate/"     # 校验配置保留区，禁止修改
 
 # 只读目录（AI 可读不可写）——仅用于标注；实际生效以 allow/deny/writable 为准
 readonly:
-  - "/k8s/manifests/**/*.yaml"    # 所有 YAML 可读不可写
-  - "/docs/kingbrain/**"          # 顶层只读，但具体可写子目录见 writable
-  - "/grafana/dashboards/**/*.json"
+  - "/k8s/manifests//*.yaml"    # 该子树 YAML 可读不可写（不加入 writable）
+  - "/docs/kingbrain/"          # 顶层只读，但具体可写子目录见 writable
+  - "/grafana/dashboards//*.json"
 
 # 可写目录（AI 阶段性写入＆修改）——允许写入需同时命中 allow 与 writable；deny 仍优先生效
 writable:
-  # 顶层工具（Claude 应改这里，而非 .collab/tools）
-  - "/tools/**"
-  - "/.collab/bootstrap-tools/**"
+  # 顶层工具（aider 应改这里，而非 .collab/tools）
+  - "/tools/"
+  - "/.collab/bootstrap-tools/"
+
+  # —— 代码与服务骨架（提前准备阶段需要）——
+  - "/orchestrator/**"
+  - "/services/**"
+  - "/apps/**"
+  - "/.github/workflows/**"
+  - "/Makefile"
+
+  # —— K8s 清单（精准开放需要变更的子树）——
+  - "/k8s/orchestrator/**"
+  - "/k8s/services/**"
+  # 注意：/k8s/manifests/** 不在 writable，保持只读
 
   # 项目产物路径（FAKE/REAL 同构）
-  - "/docs/kingbrain/ACK/**"
-  - "/docs/kingbrain/PLAN/**"
-  - "/docs/kingbrain/BORROW/**"
-  - "/docs/kingbrain/DIFF/**"
-  - "/.collab/CR/**"
+  - "/docs/kingbrain/ACK/"
+  - "/docs/kingbrain/PLAN/"
+  - "/docs/kingbrain/BORROW/"
+  - "/docs/kingbrain/DIFF/"
+  - "/.collab/CR/"
 
   # —— 下面这些是 FAKE/REAL 都会用到的内部产物/审计/证据路径 —— 
-  - "/.collab/PLAN/**"            # manifest-*.json 会写这里
-  - "/.collab/DIFF/**"            # diff-*.patch 会写这里
-  - "/.collab/evidence/**"        # sbom/attestations/policy 占位
-  - "/.collab/audit/**"           # events-YYYYMMDD.jsonl（CloudEvents 本地副本）
-  - "/.collab/DRYRUN/**"          # 无凭据时的拟提交日志
+  - "/.collab/PLAN/"            # manifest-*.json 会写这里
+  - "/.collab/DIFF/"            # diff-*.patch 会写这里
+  - "/.collab/evidence/"        # sbom/attestations/policy 占位
+  - "/.collab/audit/"           # events-YYYYMMDD.jsonl（CloudEvents 本地副本）
+  - "/.collab/DRYRUN/"          # 无凭据时的拟提交日志
 
   - "/reports/**"
 # --------------------------------------------
