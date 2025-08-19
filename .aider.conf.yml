@@ -1,6 +1,9 @@
-# 使用 Claude Sonnet 4 模型
-model: anthropic/claude-sonnet-4-20250514
-editor-model: anthropic/claude-sonnet-4-20250514
+# 使用 o3 作为主模型 + 编辑模型
+model: openai/o3-2025-04-16
+editor-model: openai/o3-2025-04-16
+
+# 使用 Claude 3.5 Haiku 作为弱模型（用于 repo map / 摘要 / 搜索）
+weak-model: anthropic/claude-3-5-haiku-20241022
 
 # 自动生成最小 diff 的提交
 auto-commits: true
