@@ -6,6 +6,11 @@
 #   make kb-smoke       # 冒烟：POST /kb-api/plan 返回统一 envelope
 #   make kb-diag        # 诊断信息
 #   make kb-rollback    # 回滚到上一个 ReplicaSet
+#   make kb-ack         # trigger /kb-api/ack
+#   make kb-plan        # trigger /kb-api/plan
+#   make kb-borrow      # trigger /kb-api/borrow
+#   make kb-diff        # trigger /kb-api/diff
+#   make kb-cr          # trigger /kb-api/cr
 
 SHELL := /bin/bash
 KNS ?= orchestrator
@@ -22,6 +27,11 @@ kb-help:
 	@echo "  kb-smoke       - smoke test: POST /kb-api/plan"
 	@echo "  kb-diag        - print diagnostics (deploy/svc/ingress/pods + logs)"
 	@echo "  kb-rollback    - rollout undo kb-orchestrator"
+	@echo "  kb-ack         - trigger /kb-api/ack"
+	@echo "  kb-plan        - trigger /kb-api/plan"
+	@echo "  kb-borrow      - trigger /kb-api/borrow"
+	@echo "  kb-diff        - trigger /kb-api/diff"
+	@echo "  kb-cr          - trigger /kb-api/cr"
 
 .PHONY: kb-preflight
 kb-preflight:
@@ -37,10 +47,10 @@ kb-deploy:
 .PHONY: kb-contracts
 kb-contracts:
 	@echo ">> Contracts: ping /kb-api/health via ClusterIP (with retries)"
-	kubectl -n $(KNS) run tmp-curl --rm -i --restart=Never --image=alpine:3.20 -- \
+	kubectl -n $(KNS) run tmp-curl-$$(date +%s) --rm -i --restart=Never --image=alpine:3.20 -- \
 	  sh -lc 'set -e; apk add --no-cache curl jq >/dev/null; \
 	    i=0; until [ $$i -ge 5 ]; do \
-	      if curl -fsS http://kb-orchestrator.$(KNS).svc.cluster.local:8000/kb-api/health \
+	      if curl -fsS --max-time 10 http://kb-orchestrator.$(KNS).svc.cluster.local:8000/kb-api/health \
 	        | jq -e ".status==\"ok\" and .mode!=null" >/dev/null; then \
 	        echo OK; exit 0; \
 	      fi; \
@@ -51,10 +61,10 @@ kb-contracts:
 .PHONY: kb-smoke
 kb-smoke:
 	@echo ">> Smoke: POST /kb-api/plan (with retries)"
-	kubectl -n $(KNS) run tmp-curl2 --rm -i --restart=Never --image=alpine:3.20 -- \
+	kubectl -n $(KNS) run tmp-curl2-$$(date +%s) --rm -i --restart=Never --image=alpine:3.20 -- \
 	  sh -lc 'set -e; apk add --no-cache curl jq >/dev/null; \
 	    i=0; until [ $$i -ge 5 ]; do \
-	      if curl -fsS -X POST -H "Content-Type: application/json" \
+	      if curl -fsS --max-time 20 -X POST -H "Content-Type: application/json" \
 	        -d "{\"task\":\"smoke\",\"notes\":\"fake\"}" \
 	        http://kb-orchestrator.$(KNS).svc.cluster.local:8000/kb-api/plan \
 	        | jq -e ".result.phase==\"PLAN\"" >/dev/null; then \
@@ -74,3 +84,23 @@ kb-diag:
 	@echo ">> Diagnostics"
 	@kubectl -n $(KNS) get deploy,svc,ingress,pods -o wide
 	@kubectl -n $(KNS) logs deploy/kb-orchestrator --tail=200 || true
+
+# 通用 API 调用模板 (支持 t / n / extra 参数)
+define KB_RUN_TEMPLATE
+	@echo ">> $(1)"
+	kubectl -n $(KNS) run tmp-$(1)-$$(date +%s) --rm -i --restart=Never --image=alpine:3.20 -- \
+	  sh -lc 'set -e; apk add --no-cache curl jq >/dev/null; \
+	    JSON=$$(jq -n --arg task "$${t:-scaffold}" --arg notes "$${n:-$(1)}" \
+	      --arg extra "$${extra:-}" \
+	      "$$extra|try fromjson catch {} as $$E | {task:$$task, notes:$$notes} + $$E"); \
+	    curl -fsS --max-time 20 -X POST -H "Content-Type: application/json" \
+	      -d "$$JSON" \
+	      http://kb-orchestrator.$(KNS).svc.cluster.local:8000/kb-api/$(1) | jq'
+endef
+
+.PHONY: kb-ack kb-plan kb-borrow kb-diff kb-cr
+kb-ack:    ; $(call KB_RUN_TEMPLATE,ack)
+kb-plan:   ; $(call KB_RUN_TEMPLATE,plan)
+kb-borrow: ; $(call KB_RUN_TEMPLATE,borrow)
+kb-diff:   ; $(call KB_RUN_TEMPLATE,diff)
+kb-cr:     ; $(call KB_RUN_TEMPLATE,cr)

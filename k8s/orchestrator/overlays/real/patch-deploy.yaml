@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kb-orchestrator
+  namespace: orchestrator
+spec:
+  template:
+    spec:
+      serviceAccountName: kb-runner
+      containers:
+        - name: api
+          env:
+            - name: KB_MODE
+              value: "AUTO"           # 自动：检测到任一 LLM Key 就走 REAL
+            - name: REPO_ROOT
+              value: "/workspace"
+          envFrom:
+            - secretRef:
+                name: llm-credentials         # 含 OPENAI_API_KEY
+            - secretRef:
+                name: anthropic-credentials   # 含 ANTHROPIC_API_KEY
+          volumeMounts:
+            - name: repo
+              mountPath: /workspace
+              readOnly: false
+      volumes:
+        - name: repo
+          hostPath:
+            path: /srv/kingbrain
+            type: DirectoryOrCreate          # 没有就自动创建

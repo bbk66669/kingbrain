@@ -1,0 +1,20 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kb-orchestrator
+  namespace: orchestrator
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web  # 80
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: kb.mwwnd.org          # 按你的域名改
+      http:
+        paths:
+          - path: /kb-api
+            pathType: Prefix
+            backend:
+              service:
+                name: kb-orchestrator
+                port:
+                  number: 8000

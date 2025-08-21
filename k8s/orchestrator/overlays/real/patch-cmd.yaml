@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kb-orchestrator
+  namespace: orchestrator
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          workingDir: /workspace
+          env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: "/workspace"
+          command: ["/bin/sh","-lc"]
+          args:
+            - |
+              set -e
+              pip install --no-cache-dir flask pyyaml
+              cd /workspace
+              python -m orchestrator

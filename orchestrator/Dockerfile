@@ -3,7 +3,7 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install dependencies
-RUN pip install --no-cache-dir flask pyyaml
+pip install --no-cache-dir langgraph openai anthropic pyyaml
 
 # Copy application code
 COPY . /app/
