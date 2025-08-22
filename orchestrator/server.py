@@ -10,7 +10,7 @@ def health():
     """Health check endpoint"""
     return jsonify({
         "status": "ok",
-        "mode": orchestrator.mode
+        "mode": str(orchestrator.mode)  # 确保可 JSON 序列化
     })
 
 @app.route('/kb-api/config', methods=['GET'])
@@ -18,7 +18,7 @@ def config():
     """Get current configuration"""
     config_data = orchestrator.get_config()
     response = jsonify(config_data)
-    response.headers['x-kb-mode'] = orchestrator.mode
+    response.headers['x-kb-mode'] = str(orchestrator.mode)  # 确保是字符串
     return response
 
 @app.route('/kb-api/events/<event_id>', methods=['GET'])
