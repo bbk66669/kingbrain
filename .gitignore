@@ -55,6 +55,10 @@ insight/search_log.csv
 insight/chunks_report.html
 insight/.grimp_cache/
 insight/DROP/
+insight/kk
+insight/src
+insight/windking
+insight/windking_infra
 
 # -------- 反选需要保留的 JSON（若将来有上层规则忽略 *.json 时生效） ----------
 !insight/grafana_dashboard.json
