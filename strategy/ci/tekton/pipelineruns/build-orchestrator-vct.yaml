@@ -1,0 +1,29 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: build-orchestrator-pvc-template
+  namespace: tekton-pipelines
+spec:
+  pipelineRef:
+    name: build-orchestrator
+  params:
+    - name: repo_url
+      value: git@github.com:bbk66669/kingbrain.git
+    - name: revision
+      value: main
+    - name: image
+      value: ghcr.io/bbk66669/kingbrain/orchestrator:manual-vct-20250822
+  taskRunTemplate:
+    serviceAccountName: tekton-bot   # ← 改到这里
+  workspaces:
+    - name: shared
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+          storageClassName: local-path
+    - name: ssh-dir
+      secret:
+        secretName: git-ssh

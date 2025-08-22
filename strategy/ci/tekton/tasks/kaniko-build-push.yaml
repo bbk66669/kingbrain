@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kaniko-build-push
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: IMAGE
+      type: string
+    - name: CONTEXT
+      type: string
+      default: .
+    - name: DOCKERFILE
+      type: string
+      default: Dockerfile
+  workspaces:
+    - name: source
+  results:
+    - name: IMAGE_DIGEST
+      description: Pushed image digest
+  steps:
+    - name: build-and-push
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+        - --destination=$(params.IMAGE)
+        - --context=$(workspaces.source.path)/$(params.CONTEXT)
+        - --dockerfile=$(workspaces.source.path)/$(params.DOCKERFILE)
+        - --snapshotMode=time
+        - --use-new-run
+        - --verbosity=info
+      env:
+        - name: DOCKER_CONFIG
+          value: /tekton/home/.docker

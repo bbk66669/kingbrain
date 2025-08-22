@@ -1,0 +1,33 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone-ssh-recurse
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: output
+    - name: ssh-directory           # 挂你那个 git-ssh secret
+  params:
+    - name: url
+      type: string
+    - name: revision
+      type: string
+      default: main
+  steps:
+    - name: clone
+      image: alpine:3.20
+      script: |
+        set -euo pipefail
+        apk add --no-cache openssh git
+        mkdir -p /root/.ssh
+        cp -f $(workspaces.ssh-directory.path)/ssh-privatekey /root/.ssh/id_ed25519 || \
+        cp -f $(workspaces.ssh-directory.path)/ssh-privatekey /root/.ssh/id_rsa
+        cp -f $(workspaces.ssh-directory.path)/known_hosts /root/.ssh/known_hosts
+        chmod 700 /root/.ssh
+        chmod 600 /root/.ssh/id_* /root/.ssh/known_hosts
+
+        export GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes'
+        git config --global advice.detachedHead false
+        git clone --recurse-submodules --depth=1 --branch "$(params.revision)" "$(params.url)" "$(workspaces.output.path)"
+        cd "$(workspaces.output.path)"
+        git rev-parse --short HEAD

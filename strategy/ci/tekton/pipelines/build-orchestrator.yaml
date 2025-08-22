@@ -1,0 +1,57 @@
+# strategy/ci/tekton/pipelines/build-orchestrator.yaml
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: build-orchestrator
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: repo_url
+      type: string
+    - name: revision
+      type: string
+      default: main
+    - name: image
+      type: string
+    - name: userHome                 # ← 新增
+      type: string
+      default: /tekton/home
+  workspaces:
+    - name: shared
+    - name: ssh-dir
+  tasks:
+    - name: clone
+      taskRef: { name: git-clone }
+      params:
+        - name: url
+          value: $(params.repo_url)
+        - name: revision
+          value: $(params.revision)
+        - name: deleteExisting
+          value: "true"
+        - name: submodules
+          value: "true"
+        - name: depth
+          value: "1"
+        - name: sslVerify
+          value: "true"
+        - name: userHome             # ← 传入
+          value: $(params.userHome)
+      workspaces:
+        - name: output
+          workspace: shared
+        - name: ssh-directory
+          workspace: ssh-dir
+    - name: build
+      runAfter: [clone]
+      taskRef: { name: kaniko-build-push }
+      params:
+        - name: IMAGE
+          value: $(params.image)
+        - name: CONTEXT
+          value: orchestrator
+        - name: DOCKERFILE
+          value: orchestrator/Dockerfile
+      workspaces:
+        - name: source
+          workspace: shared

@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chains-config
+  namespace: tekton-chains
+data:
+  artifacts.oci.storage: oci
+  transparency.enabled: "true"
+  transparency.url: https://rekor.sigstore.dev
+  artifacts.taskrun.format: in-toto
+  signers.x509.fulcio.enabled: "true"
+  # 你 PoR 里提到的 fulcio v2（实验），如需开启可加：
+  # signers.x509.fulcio.address: https://fulcio.sigstore.dev
