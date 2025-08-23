@@ -11,6 +11,8 @@
 #   make kb-borrow      # trigger /kb-api/borrow
 #   make kb-diff        # trigger /kb-api/diff
 #   make kb-cr          # trigger /kb-api/cr
+#   make kb-clean       # 清理可能遗留的 tmp-* 调试 Pod
+#   make kb-status      # 查看 rollout 状态与 Pod 详情
 
 SHELL := /bin/bash
 KNS ?= orchestrator
@@ -32,6 +34,8 @@ kb-help:
 	@echo "  kb-borrow      - trigger /kb-api/borrow"
 	@echo "  kb-diff        - trigger /kb-api/diff"
 	@echo "  kb-cr          - trigger /kb-api/cr"
+	@echo "  kb-clean       - clean leftover tmp-* pods"
+	@echo "  kb-status      - show rollout status & pod details"
 
 .PHONY: kb-preflight
 kb-preflight:
@@ -67,7 +71,7 @@ kb-smoke:
 	      if curl -fsS --max-time 20 -X POST -H "Content-Type: application/json" \
 	        -d "{\"task\":\"smoke\",\"notes\":\"fake\"}" \
 	        http://kb-orchestrator.$(KNS).svc.cluster.local:8000/kb-api/plan \
-	        | jq -e ".result.phase==\"PLAN\"" >/dev/null; then \
+	        | jq -e "(.result.phase // .phase) == \"PLAN\"" >/dev/null; then \
 	        echo OK; exit 0; \
 	      fi; \
 	      echo "retry $$i"; i=$$((i+1)); sleep 2; \
@@ -84,6 +88,10 @@ kb-diag:
 	@echo ">> Diagnostics"
 	@kubectl -n $(KNS) get deploy,svc,ingress,pods -o wide
 	@kubectl -n $(KNS) logs deploy/kb-orchestrator --tail=200 || true
+	@echo ">> Recent events"
+	@kubectl -n $(KNS) get events --sort-by=.lastTimestamp | tail -n 20 || true
+	@echo ">> Deploy describe (tail)"
+	@kubectl -n $(KNS) describe deploy/kb-orchestrator | tail -n 80 || true
 
 # 通用 API 调用模板 (支持 t / n / extra 参数)
 define KB_RUN_TEMPLATE
@@ -104,3 +112,20 @@ kb-plan:   ; $(call KB_RUN_TEMPLATE,plan)
 kb-borrow: ; $(call KB_RUN_TEMPLATE,borrow)
 kb-diff:   ; $(call KB_RUN_TEMPLATE,diff)
 kb-cr:     ; $(call KB_RUN_TEMPLATE,cr)
+
+# ========= 清理与状态 =========
+.PHONY: kb-clean
+kb-clean:
+	@echo ">> Clean leftover tmp-* pods (if any)"
+	- kubectl -n $(KNS) get pods -o name | grep '^pod/tmp-' | xargs -r kubectl -n $(KNS) delete
+	@kubectl -n $(KNS) get pods | grep tmp- || echo "no tmp pods"
+
+.PHONY: kb-status
+kb-status:
+	@echo ">> Status: kb-orchestrator rollout & pods"
+	@kubectl -n $(KNS) rollout status deploy/kb-orchestrator
+	@kubectl -n $(KNS) get deploy/kb-orchestrator -o wide
+	@kubectl -n $(KNS) get rs -l app=kb-orchestrator
+	@kubectl -n $(KNS) get pods -l app=kb-orchestrator -o wide
+	@echo ">> Pod describe (last 50 lines)"
+	@kubectl -n $(KNS) describe pod -l app=kb-orchestrator | tail -n 50 || true

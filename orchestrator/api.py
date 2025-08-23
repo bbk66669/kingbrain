@@ -293,9 +293,10 @@ class KBOrchestrator:
         base = Path(REPO_ROOT)
         sid = workflow_id[:8]
         if phase in ("ACK", "PLAN", "BORROW", "DIFF"):
+            # Write both files under /docs/kingbrain/<PHASE>/..., keeping manifest inside the docs tree
             return [
                 str(base / "docs" / "kingbrain" / phase / f"result-{sid}.md"),
-                str(base / ".collab" / phase / f"manifest-{sid}.json"),
+                str(base / "docs" / "kingbrain" / phase / f"manifest-{sid}.json"),
             ]
         # default (e.g. CR -> reports unless allowlist已放开 docs/kingbrain/CR/**)
         return [

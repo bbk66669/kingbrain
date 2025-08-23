@@ -1,6 +1,7 @@
 import os
 import json
 from flask import Flask, request, jsonify, Response
+from dataclasses import asdict
 from .api import orchestrator
 
 app = Flask(__name__)
@@ -10,7 +11,7 @@ def health():
     """Health check endpoint"""
     return jsonify({
         "status": "ok",
-        "mode": str(orchestrator.mode)
+        "mode": orchestrator.mode.value
     })
 
 @app.route('/kb-api/config', methods=['GET'])
@@ -18,7 +19,7 @@ def config():
     """Get current configuration"""
     config_data = orchestrator.get_config()
     response = jsonify(config_data)
-    response.headers['x-kb-mode'] = str(orchestrator.mode)
+    response.headers['x-kb-mode'] = orchestrator.mode.value
     return response
 
 @app.route('/kb-api/events/<event_id>', methods=['GET'])
@@ -38,12 +39,14 @@ def plan():
     notes = data.get('notes', '')
     paths = data.get('paths_to_write', [])
 
-    result = orchestrator.process_workflow(task, notes, "PLAN", paths)
+    wr = orchestrator.process_workflow(task, notes, "PLAN", paths)
 
-    if result.error is not None:
-        return jsonify({"error": result.error}), 400
+    # 在错误时返回 400，并附带原因
+    if wr.error is not None:
+        return jsonify({"error": wr.error}), 400
 
-    return jsonify(result.__dict__)
+    # 成功时统一包裹为 {"result": ...}，兼容现有 kb-smoke 断言
+    return jsonify({"result": asdict(wr)}), 200
 
 @app.route('/kb-api/ack', methods=['POST'])
 def ack():
@@ -54,12 +57,12 @@ def ack():
     phase = data.get('phase', 'ACK')
     paths = data.get('paths_to_write', [])
 
-    result = orchestrator.process_workflow(task, notes, phase, paths)
+    wr = orchestrator.process_workflow(task, notes, phase, paths)
 
-    if result.error is not None:
-        return jsonify({"error": result.error}), 400
+    if wr.error is not None:
+        return jsonify({"error": wr.error}), 400
 
-    return jsonify(result.__dict__)
+    return jsonify({"result": asdict(wr)}), 200
 
 @app.route('/kb-api/borrow', methods=['POST'])
 def borrow():
@@ -70,12 +73,12 @@ def borrow():
     phase = data.get('phase', 'BORROW')
     paths = data.get('paths_to_write', [])
 
-    result = orchestrator.process_workflow(task, notes, phase, paths)
+    wr = orchestrator.process_workflow(task, notes, phase, paths)
 
-    if result.error is not None:
-        return jsonify({"error": result.error}), 400
+    if wr.error is not None:
+        return jsonify({"error": wr.error}), 400
 
-    return jsonify(result.__dict__)
+    return jsonify({"result": asdict(wr)}), 200
 
 @app.route('/kb-api/diff', methods=['POST'])
 def diff():
@@ -86,12 +89,12 @@ def diff():
     phase = data.get('phase', 'DIFF')
     paths = data.get('paths_to_write', [])
 
-    result = orchestrator.process_workflow(task, notes, phase, paths)
+    wr = orchestrator.process_workflow(task, notes, phase, paths)
 
-    if result.error is not None:
-        return jsonify({"error": result.error}), 400
+    if wr.error is not None:
+        return jsonify({"error": wr.error}), 400
 
-    return jsonify(result.__dict__)
+    return jsonify({"result": asdict(wr)}), 200
 
 @app.route('/kb-api/cr', methods=['POST'])
 def cr():
@@ -102,12 +105,12 @@ def cr():
     phase = data.get('phase', 'CR')
     paths = data.get('paths_to_write', [])
 
-    result = orchestrator.process_workflow(task, notes, phase, paths)
+    wr = orchestrator.process_workflow(task, notes, phase, paths)
 
-    if result.error is not None:
-        return jsonify({"error": result.error}), 400
+    if wr.error is not None:
+        return jsonify({"error": wr.error}), 400
 
-    return jsonify(result.__dict__)
+    return jsonify({"result": asdict(wr)}), 200
 
 def run_server():
     """Run the Flask server"""
