@@ -1,158 +1,52 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  annotations:
-    deployment.kubernetes.io/revision: "48"
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"labels":{"app":"kb-orchestrator"},"name":"kb-orchestrator","namespace":"orchestrator"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"kb-orchestrator"}},"template":{"metadata":{"labels":{"app":"kb-orchestrator"}},"spec":{"containers":[{"args":["set -e\ncat \u003e /app/app.py \u003c\u003c'PY'\nimport os, time\nfrom typing import Optional, Dict, Any\nfrom fastapi import FastAPI, Request\nfrom fastapi.responses import JSONResponse\n\ndef _mode()-\u003estr:\n    forced=os.getenv(\"KB_MODE\",\"\").strip().upper()\n    if forced in (\"FAKE\",\"REAL\"): return forced\n    for k in (\"OPENAI_API_KEY\",\"ANTHROPIC_API_KEY\",\"AZURE_OPENAI_KEY\"):\n        if os.getenv(k): return \"REAL\"\n    return \"FAKE\"\n\napp=FastAPI()\n\n@app.get(\"/kb-api/health\")\nasync def health():\n    return {\"status\":\"ok\",\"mode\":_mode()}\n\ndef _env(phase:str)-\u003eDict[str,Any]:\n    ts=int(time.time())\n    return {\n        \"workflow_id\": None,\n        \"run_id\": None,\n        \"result\": {\n            \"phase\": phase,\n            \"written_paths\": [],\n            \"evidence_refs\": [],\n            \"cloudevent_ids\": [],\n            \"ts\": ts,\n            \"mode\": _mode()\n        }\n    }\n\n@app.get(\"/kb-api/config\")\nasync def cfg():\n    return JSONResponse({\n        \"mode\": _mode(),\n        \"llm_providers_detected\": [k for k in (\"OPENAI_API_KEY\",\"ANTHROPIC_API_KEY\",\"AZURE_OPENAI_KEY\") if os.getenv(k)],\n        \"events_sink\": os.getenv(\"NATS_URL\",\"nats://kb-nats.orchestrator.svc.cluster.local:4222\"),\n        \"repo_root\": \"/workspace\"\n    }, headers={\"x-kb-mode\": _mode()})\n\n@app.post(\"/kb-api/ack\")\nasync def ack(_: Request):  return JSONResponse(_env(\"ACK\"),  headers={\"x-kb-mode\": _mode()})\n@app.post(\"/kb-api/plan\")\nasync def plan(_: Request): return JSONResponse(_env(\"PLAN\"), headers={\"x-kb-mode\": _mode()})\n@app.post(\"/kb-api/borrow\")\nasync def borrow(_: Request): return JSONResponse(_env(\"BORROW\"), headers={\"x-kb-mode\": _mode()})\n@app.post(\"/kb-api/diff\")\nasync def diff(_: Request): return JSONResponse(_env(\"DIFF\"), headers={\"x-kb-mode\": _mode()})\n@app.post(\"/kb-api/cr\")\nasync def cr(_: Request):   return JSONResponse(_env(\"CR\"),   headers={\"x-kb-mode\": _mode()})\n\n@app.get(\"/kb-api/runs/{wid}\")\nasync def runs(wid: str, wait: Optional[int]=0):\n    return JSONResponse({\"error\": f\"workflow not found for ID: {wid}\", \"mode\": _mode()},\n                        status_code=404, headers={\"x-kb-mode\": _mode()})\nPY\npip install --no-cache-dir fastapi==0.111.0 uvicorn[standard]==0.30.1\nexec uvicorn app:app --host 0.0.0.0 --port 8000\n"],"command":["/bin/sh","-lc"],"env":[{"name":"KB_MODE","value":"AUTO"},{"name":"REPO_ROOT","value":"/workspace"}],"envFrom":[{"secretRef":{"name":"llm-credentials"}},{"secretRef":{"name":"anthropic-credentials"}}],"image":"python:3.11-slim","imagePullPolicy":"IfNotPresent","name":"api","ports":[{"containerPort":8000}],"volumeMounts":[{"mountPath":"/workspace","name":"repo","readOnly":false}],"workingDir":"/app"}],"serviceAccountName":"kb-runner","volumes":[{"hostPath":{"path":"/srv/kingbrain","type":"DirectoryOrCreate"},"name":"repo"}]}}}}
-  creationTimestamp: "2025-08-10T17:59:08Z"
-  generation: 52
-  labels:
-    app: kb-orchestrator
   name: kb-orchestrator
   namespace: orchestrator
-  resourceVersion: "449910"
-  uid: 9bf962ed-cf3b-496e-ac7d-a8558cb06325
+  labels:
+    app: kb-orchestrator
 spec:
-  progressDeadlineSeconds: 600
   replicas: 1
-  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: kb-orchestrator
   strategy:
+    type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 25%
-    type: RollingUpdate
   template:
     metadata:
-      annotations:
-        kubectl.kubernetes.io/restartedAt: "2025-08-17T16:29:59Z"
-        restartedAt: "1754924951"
-      creationTimestamp: null
       labels:
         app: kb-orchestrator
+        kb-signed: "true"                # 触发 Kyverno 门控
     spec:
-      containers:
-      - args:
-        - |
-          set -e
-          cat > /app/app.py <<'PY'
-          import os, time
-          from typing import Optional, Dict, Any
-          from fastapi import FastAPI, Request
-          from fastapi.responses import JSONResponse
-
-          def _mode()->str:
-              forced=os.getenv("KB_MODE","").strip().upper()
-              if forced in ("FAKE","REAL"): return forced
-              for k in ("OPENAI_API_KEY","ANTHROPIC_API_KEY","AZURE_OPENAI_KEY"):
-                  if os.getenv(k): return "REAL"
-              return "FAKE"
-
-          app=FastAPI()
-
-          @app.get("/kb-api/health")
-          async def health():
-              return {"status":"ok","mode":_mode()}
-
-          def _env(phase:str)->Dict[str,Any]:
-              ts=int(time.time())
-              return {
-                  "workflow_id": None,
-                  "run_id": None,
-                  "result": {
-                      "phase": phase,
-                      "written_paths": [],
-                      "evidence_refs": [],
-                      "cloudevent_ids": [],
-                      "ts": ts,
-                      "mode": _mode()
-                  }
-              }
-
-          @app.get("/kb-api/config")
-          async def cfg():
-              return JSONResponse({
-                  "mode": _mode(),
-                  "llm_providers_detected": [k for k in ("OPENAI_API_KEY","ANTHROPIC_API_KEY","AZURE_OPENAI_KEY") if os.getenv(k)],
-                  "events_sink": os.getenv("NATS_URL","nats://kb-nats.orchestrator.svc.cluster.local:4222"),
-                  "repo_root": "/workspace"
-              }, headers={"x-kb-mode": _mode()})
-
-          @app.post("/kb-api/ack")
-          async def ack(_: Request):  return JSONResponse(_env("ACK"),  headers={"x-kb-mode": _mode()})
-          @app.post("/kb-api/plan")
-          async def plan(_: Request): return JSONResponse(_env("PLAN"), headers={"x-kb-mode": _mode()})
-          @app.post("/kb-api/borrow")
-          async def borrow(_: Request): return JSONResponse(_env("BORROW"), headers={"x-kb-mode": _mode()})
-          @app.post("/kb-api/diff")
-          async def diff(_: Request): return JSONResponse(_env("DIFF"), headers={"x-kb-mode": _mode()})
-          @app.post("/kb-api/cr")
-          async def cr(_: Request):   return JSONResponse(_env("CR"),   headers={"x-kb-mode": _mode()})
-
-          @app.get("/kb-api/runs/{wid}")
-          async def runs(wid: str, wait: Optional[int]=0):
-              return JSONResponse({"error": f"workflow not found for ID: {wid}", "mode": _mode()},
-                                  status_code=404, headers={"x-kb-mode": _mode()})
-          PY
-          pip install --no-cache-dir fastapi==0.111.0 uvicorn[standard]==0.30.1
-          exec uvicorn app:app --host 0.0.0.0 --port 8000
-        command:
-        - /bin/sh
-        - -lc
-        env:
-        - name: KB_MODE
-          value: AUTO
-        - name: REPO_ROOT
-          value: /workspace
-        envFrom:
-        - secretRef:
-            name: llm-credentials
-        - secretRef:
-            name: anthropic-credentials
-        image: python:3.11-slim
-        imagePullPolicy: IfNotPresent
-        name: api
-        ports:
-        - containerPort: 8000
-          protocol: TCP
-        resources: {}
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
-        volumeMounts:
-        - mountPath: /workspace
-          name: repo
-        workingDir: /app
-      dnsPolicy: ClusterFirst
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      serviceAccount: kb-runner
       serviceAccountName: kb-runner
-      terminationGracePeriodSeconds: 30
+      imagePullSecrets:
+        - name: ghcr-pull                # 从 GHCR 拉镜像
+      containers:
+        - name: api
+          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:86296f14cbe84af42869eafe76285180b63812b8656d6c6502c5922c8ab58338
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          env:
+            - name: KB_MODE
+              value: "AUTO"
+            - name: REPO_ROOT
+              value: "/workspace"
+          envFrom:
+            - secretRef:
+                name: llm-credentials
+            - secretRef:
+                name: anthropic-credentials
+          volumeMounts:
+            - name: repo
+              mountPath: /workspace
+              readOnly: false
       volumes:
-      - hostPath:
-          path: /srv/kingbrain
-          type: DirectoryOrCreate
-        name: repo
-status:
-  availableReplicas: 1
-  conditions:
-  - lastTransitionTime: "2025-08-13T05:51:52Z"
-    lastUpdateTime: "2025-08-13T05:51:52Z"
-    message: Deployment has minimum availability.
-    reason: MinimumReplicasAvailable
-    status: "True"
-    type: Available
-  - lastTransitionTime: "2025-08-13T05:07:15Z"
-    lastUpdateTime: "2025-08-21T08:15:53Z"
-    message: ReplicaSet "kb-orchestrator-8594c47c94" has successfully progressed.
-    reason: NewReplicaSetAvailable
-    status: "True"
-    type: Progressing
-  observedGeneration: 52
-  readyReplicas: 1
-  replicas: 1
-  updatedReplicas: 1
+        - name: repo
+          hostPath:
+            path: /srv/kingbrain
+            type: DirectoryOrCreate
