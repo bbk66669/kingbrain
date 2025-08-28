@@ -7,10 +7,10 @@ spec:
   template:
     metadata:
       labels:
-        kb-signed: "true"          # 触发门控
+        kb-signed: "true"
     spec:
       imagePullSecrets:
         - name: ghcr-pull
       containers:
         - name: api
-          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:REPLACE_WITH_DIGEST
+          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:86296f14cbe84af42869eafe76285180b63812b8656d6c6502c5922c8ab58338

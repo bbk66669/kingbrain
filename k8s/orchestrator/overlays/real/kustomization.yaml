@@ -4,5 +4,4 @@ resources:
   - ../../base
 patchesStrategicMerge:
   - patch-deploy.yaml
-  - patch-cmd.yaml
   - patch-image.yaml
