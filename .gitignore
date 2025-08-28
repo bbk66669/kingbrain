@@ -81,6 +81,7 @@ insight/windking_infra
 *.der
 *.crt
 *.key
+*.pub
 
 # -------- 下载的二进制 ----------
 kyverno-cli_*.tar.gz
