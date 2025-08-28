@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kb-orchestrator
+  namespace: orchestrator
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          command: null
+          args: null
+          workingDir: null
