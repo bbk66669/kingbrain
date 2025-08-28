@@ -1,0 +1,49 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: kb-verify-slsa
+spec:
+  validationFailureAction: Enforce
+  background: true
+  failurePolicy: Fail
+  webhookTimeoutSeconds: 10
+
+  rules:
+  - name: require-slsa-attestation
+    match:
+      any:
+      - resources:
+          kinds: ["Pod"]
+          namespaces: ["orchestrator"]
+          selector:
+            matchLabels:
+              kb-signed: "true"
+
+    verifyImages:
+    - imageReferences:
+      - "ghcr.io/bbk66669/*@sha256:*"
+      mutateDigest: false
+
+      # 1) 镜像签名用你的公钥校验
+      attestors:
+      - entries:
+        - keys:
+            publicKeys: |
+              -----BEGIN PUBLIC KEY-----
+              MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGpspOgwInY440oX7Icik9WXqmc8P
+              7eSGAHp9UkoI/Zm8Tdb1tsApy4UWiCLYRZLtWSBCY0jFD7HT6WxTkNah4w==
+              -----END PUBLIC KEY-----
+            signatureAlgorithm: sha256
+
+      # 2) 仅要求存在 slsaprovenance 证明，且其 DSSE 由你的公钥签名
+      attestations:
+      - type: slsaprovenance
+        attestors:
+        - entries:
+          - keys:
+              publicKeys: |
+                -----BEGIN PUBLIC KEY-----
+                MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEGpspOgwInY440oX7Icik9WXqmc8P
+                7eSGAHp9UkoI/Zm8Tdb1tsApy4UWiCLYRZLtWSBCY0jFD7HT6WxTkNah4w==
+                -----END PUBLIC KEY-----
+              signatureAlgorithm: sha256

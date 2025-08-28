@@ -17,7 +17,18 @@ spec:
     - name: source
   results:
     - name: IMAGE_DIGEST
-      description: Pushed image digest
+      type: string
+      description: "Pushed image digest"
+    - name: IMAGE_URL
+      type: string
+      description: "Pushed image URL (repository[:tag])"
+  volumes:
+    - name: docker-config
+      secret:
+        secretName: ghcr-creds
+        items:
+          - key: .dockerconfigjson
+            path: config.json
   steps:
     - name: build-and-push
       image: gcr.io/kaniko-project/executor:latest
@@ -25,9 +36,30 @@ spec:
         - --destination=$(params.IMAGE)
         - --context=$(workspaces.source.path)/$(params.CONTEXT)
         - --dockerfile=$(workspaces.source.path)/$(params.DOCKERFILE)
-        - --snapshotMode=time
+        - --digest-file=$(results.IMAGE_DIGEST.path)   # 写入 Tekton result
+        - --snapshot-mode=time
         - --use-new-run
         - --verbosity=info
-      env:
-        - name: DOCKER_CONFIG
-          value: /tekton/home/.docker
+      volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker
+    - name: write-image-url
+      image: alpine:3.20
+      script: |
+        #!/bin/sh
+        set -eu
+        printf '%s' '$(params.IMAGE)' > "$(results.IMAGE_URL.path)"
+        sync
+        # 立即校验一次，没写成功就 fail
+        test -s "$(results.IMAGE_URL.path)"
+    - name: verify-results
+      image: alpine:3.20
+      script: |
+        #!/bin/sh
+        set -eu
+        ls -l /tekton/results || true
+        echo "IMAGE_DIGEST=$(cat $(results.IMAGE_DIGEST.path) || true)"
+        echo "IMAGE_URL=$(cat $(results.IMAGE_URL.path) || true)"
+        # 两个结果文件都必须非空
+        test -s "$(results.IMAGE_DIGEST.path)"
+        test -s "$(results.IMAGE_URL.path)"
