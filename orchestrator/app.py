@@ -1,0 +1,61 @@
+import os, time
+from typing import Optional, Dict, Any
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+
+def _mode() -> str:
+    forced = os.getenv("KB_MODE","").strip().upper()
+    if forced in ("FAKE","REAL"):
+        return forced
+    for k in ("OPENAI_API_KEY","ANTHROPIC_API_KEY","AZURE_OPENAI_KEY"):
+        if os.getenv(k):
+            return "REAL"
+    return "FAKE"
+
+app = FastAPI()
+
+@app.get("/kb-api/health")
+async def health():
+    return {"status":"ok","mode":_mode()}
+
+def _env(phase: str) -> Dict[str, Any]:
+    ts = int(time.time())
+    return {
+        "workflow_id": None,
+        "run_id": None,
+        "result": {
+            "phase": phase,
+            "written_paths": [],
+            "evidence_refs": [],
+            "cloudevent_ids": [],
+            "ts": ts,
+            "mode": _mode()
+        }
+    }
+
+@app.post("/kb-api/ack")
+async def ack(_: Request):
+    return JSONResponse(_env("ACK"), headers={"x-kb-mode": _mode()})
+
+@app.post("/kb-api/plan")
+async def plan(_: Request):
+    return JSONResponse(_env("PLAN"), headers={"x-kb-mode": _mode()})
+
+@app.post("/kb-api/borrow")
+async def borrow(_: Request):
+    return JSONResponse(_env("BORROW"), headers={"x-kb-mode": _mode()})
+
+@app.post("/kb-api/diff")
+async def diff(_: Request):
+    return JSONResponse(_env("DIFF"), headers={"x-kb-mode": _mode()})
+
+@app.post("/kb-api/cr")
+async def cr(_: Request):
+    return JSONResponse(_env("CR"), headers={"x-kb-mode": _mode()})
+
+@app.get("/kb-api/runs/{wid}")
+async def runs(wid: str, wait: Optional[int]=0):
+    return JSONResponse(
+        {"error": f"workflow not found for ID: {wid}", "mode": _mode()},
+        status_code=404, headers={"x-kb-mode": _mode()},
+    )

@@ -1,5 +1,6 @@
-flask
+fastapi
+uvicorn[standard]
 pyyaml
 langgraph
-opener
+openai
 anthropic
