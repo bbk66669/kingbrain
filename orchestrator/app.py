@@ -1,19 +1,17 @@
-# app.py — HTTP glue. Keep api.py as the engine.
-import os, time, json
+# orchestrator/app.py
+import os, json
 from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-# import the orchestrator singleton from api.py (prefer package import)
 try:
-    from orchestrator.api import orchestrator  # docker 镜像里通常是包路径
+    from orchestrator.api import orchestrator
 except Exception:
-    from api import orchestrator               # 本地/开发时备用
+    from api import orchestrator  # 本地兜底
 
 app = FastAPI()
 
 def _mode() -> str:
-    # 以 orchestrator 的判定为准；失败再退回 env 检测
     try:
         return orchestrator.mode.value
     except Exception:
@@ -33,7 +31,7 @@ async def config():
     return JSONResponse(cfg, headers={"x-kb-mode": cfg.get("mode","AUTO")})
 
 async def _run_phase(req: Request, phase: str):
-    body = {}
+    body: Dict[str, Any] = {}
     try:
         if req.headers.get("content-length","0") != "0":
             body = await req.json()
@@ -41,11 +39,9 @@ async def _run_phase(req: Request, phase: str):
         body = {}
     task  = body.get("task","")
     notes = body.get("notes","")
-    paths = body.get("paths")  # 可选：["docs/kingbrain/PLAN/PLAN.md", ...]
+    paths = body.get("paths")
 
-    res = orchestrator.process_workflow(
-        task=task, notes=notes, phase=phase, paths_to_write=paths
-    )
+    res = orchestrator.process_workflow(task=task, notes=notes, phase=phase, paths_to_write=paths)
     payload = {
         "workflow_id":   res.workflow_id,
         "run_id":        res.run_id,
@@ -60,15 +56,27 @@ async def _run_phase(req: Request, phase: str):
     return JSONResponse(payload, status_code=(200 if not res.error else 400),
                         headers={"x-kb-mode": res.mode})
 
-@app.post("/kb-api/ack")   async def ack(req: Request):    return await _run_phase(req, "ACK")
-@app.post("/kb-api/plan")  async def plan(req: Request):   return await _run_phase(req, "PLAN")
-@app.post("/kb-api/borrow")async def borrow(req: Request): return await _run_phase(req, "BORROW")
-@app.post("/kb-api/diff")  async def diff(req: Request):   return await _run_phase(req, "DIFF")
-@app.post("/kb-api/cr")    async def cr(req: Request):     return await _run_phase(req, "CR")
+@app.post("/kb-api/ack")
+async def ack(req: Request):
+    return await _run_phase(req, "ACK")
+
+@app.post("/kb-api/plan")
+async def plan(req: Request):
+    return await _run_phase(req, "PLAN")
+
+@app.post("/kb-api/borrow")
+async def borrow(req: Request):
+    return await _run_phase(req, "BORROW")
+
+@app.post("/kb-api/diff")
+async def diff(req: Request):
+    return await _run_phase(req, "DIFF")
+
+@app.post("/kb-api/cr")
+async def cr(req: Request):
+    return await _run_phase(req, "CR")
 
 @app.get("/kb-api/runs/{wid}")
 async def runs(wid: str, wait: Optional[int]=0):
-    return JSONResponse(
-        {"error": f"workflow not found for ID: {wid}", "mode": _mode()},
-        status_code=404, headers={"x-kb-mode": _mode()},
-    )
+    return JSONResponse({"error": f"workflow not found for ID: {wid}", "mode": _mode()},
+                        status_code=404, headers={"x-kb-mode": _mode()})
