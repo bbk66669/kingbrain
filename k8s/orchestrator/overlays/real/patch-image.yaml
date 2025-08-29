@@ -13,4 +13,4 @@ spec:
         - name: ghcr-pull
       containers:
         - name: api
-          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:86296f14cbe84af42869eafe76285180b63812b8656d6c6502c5922c8ab58338
+          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:f51790cccc73f92f04ce5d98e42dbf8d7dde9bbc6201dc9d1f2c4427a7dc3450

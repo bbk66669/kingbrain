@@ -6,4 +6,3 @@ patchesStrategicMerge:
   - patch-deploy.yaml
   - patch-image.yaml
   - patch-clear-cmd.yaml
-  - patch-cmd.yaml
