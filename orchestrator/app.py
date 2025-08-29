@@ -1,57 +1,70 @@
-import os, time
-from typing import Optional, Dict, Any
+# app.py — HTTP glue. Keep api.py as the engine.
+import os, time, json
+from typing import Optional, Dict, Any, List
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-def _mode() -> str:
-    forced = os.getenv("KB_MODE","").strip().upper()
-    if forced in ("FAKE","REAL"):
-        return forced
-    for k in ("OPENAI_API_KEY","ANTHROPIC_API_KEY","AZURE_OPENAI_KEY"):
-        if os.getenv(k):
-            return "REAL"
-    return "FAKE"
+# import the orchestrator singleton from api.py (prefer package import)
+try:
+    from orchestrator.api import orchestrator  # docker 镜像里通常是包路径
+except Exception:
+    from api import orchestrator               # 本地/开发时备用
 
 app = FastAPI()
+
+def _mode() -> str:
+    # 以 orchestrator 的判定为准；失败再退回 env 检测
+    try:
+        return orchestrator.mode.value
+    except Exception:
+        forced = os.getenv("KB_MODE","").strip().upper()
+        if forced in ("FAKE","REAL"): return forced
+        for k in ("OPENAI_API_KEY","ANTHROPIC_API_KEY","AZURE_OPENAI_KEY"):
+            if os.getenv(k): return "REAL"
+        return "FAKE"
 
 @app.get("/kb-api/health")
 async def health():
     return {"status":"ok","mode":_mode()}
 
-def _env(phase: str) -> Dict[str, Any]:
-    ts = int(time.time())
-    return {
-        "workflow_id": None,
-        "run_id": None,
-        "result": {
-            "phase": phase,
-            "written_paths": [],
-            "evidence_refs": [],
-            "cloudevent_ids": [],
-            "ts": ts,
-            "mode": _mode()
-        }
+@app.get("/kb-api/config")
+async def config():
+    cfg = orchestrator.get_config()
+    return JSONResponse(cfg, headers={"x-kb-mode": cfg.get("mode","AUTO")})
+
+async def _run_phase(req: Request, phase: str):
+    body = {}
+    try:
+        if req.headers.get("content-length","0") != "0":
+            body = await req.json()
+    except Exception:
+        body = {}
+    task  = body.get("task","")
+    notes = body.get("notes","")
+    paths = body.get("paths")  # 可选：["docs/kingbrain/PLAN/PLAN.md", ...]
+
+    res = orchestrator.process_workflow(
+        task=task, notes=notes, phase=phase, paths_to_write=paths
+    )
+    payload = {
+        "workflow_id":   res.workflow_id,
+        "run_id":        res.run_id,
+        "phase":         res.phase,
+        "written_paths": res.written_paths,
+        "evidence_refs": res.evidence_refs,
+        "cloudevent_ids":res.cloudevent_ids,
+        "ts":            res.timestamp,
+        "mode":          res.mode,
+        "error":         res.error,
     }
+    return JSONResponse(payload, status_code=(200 if not res.error else 400),
+                        headers={"x-kb-mode": res.mode})
 
-@app.post("/kb-api/ack")
-async def ack(_: Request):
-    return JSONResponse(_env("ACK"), headers={"x-kb-mode": _mode()})
-
-@app.post("/kb-api/plan")
-async def plan(_: Request):
-    return JSONResponse(_env("PLAN"), headers={"x-kb-mode": _mode()})
-
-@app.post("/kb-api/borrow")
-async def borrow(_: Request):
-    return JSONResponse(_env("BORROW"), headers={"x-kb-mode": _mode()})
-
-@app.post("/kb-api/diff")
-async def diff(_: Request):
-    return JSONResponse(_env("DIFF"), headers={"x-kb-mode": _mode()})
-
-@app.post("/kb-api/cr")
-async def cr(_: Request):
-    return JSONResponse(_env("CR"), headers={"x-kb-mode": _mode()})
+@app.post("/kb-api/ack")   async def ack(req: Request):    return await _run_phase(req, "ACK")
+@app.post("/kb-api/plan")  async def plan(req: Request):   return await _run_phase(req, "PLAN")
+@app.post("/kb-api/borrow")async def borrow(req: Request): return await _run_phase(req, "BORROW")
+@app.post("/kb-api/diff")  async def diff(req: Request):   return await _run_phase(req, "DIFF")
+@app.post("/kb-api/cr")    async def cr(req: Request):     return await _run_phase(req, "CR")
 
 @app.get("/kb-api/runs/{wid}")
 async def runs(wid: str, wait: Optional[int]=0):

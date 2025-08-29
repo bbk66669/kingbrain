@@ -23,31 +23,44 @@ spec:
       default: tekton-bot@example.com
   workspaces:
     - name: source          # 代码仓库（clone 输出）
-    - name: ssh-dir         # SSH 私钥等
+    - name: ssh-dir         # 挂 git-ssh secret 的 workspace
   steps:
     - name: write-and-push
-      image: alpine/git:2.45
+      image: alpine:3.20
       workingDir: $(workspaces.source.path)
       script: |
         #!/bin/sh
-        set -eu
+        set -euo pipefail
+        apk add --no-cache git openssh-client
+
+        # 准备 SSH（从 workspace 复制，而不是尝试“直接挂载到 /root/.ssh”）
+        mkdir -p /root/.ssh
+        if [ -f "$(workspaces.ssh-dir.path)/ssh-privatekey" ]; then
+          umask 077
+          cp "$(workspaces.ssh-dir.path)/ssh-privatekey" /root/.ssh/id_ed25519 2>/dev/null || true
+          cp "$(workspaces.ssh-dir.path)/ssh-privatekey" /root/.ssh/id_rsa     2>/dev/null || true
+        fi
+        cp "$(workspaces.ssh-dir.path)/known_hosts" /root/.ssh/known_hosts
+        chmod 700 /root/.ssh; chmod 600 /root/.ssh/* 2>/dev/null || true
+        rm -f /root/.ssh/config
+        export GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes'
 
         FILE="$(params.FILE)"
         IMAGE_WITH_TAG="$(params.IMAGE)"
         DIGEST="$(params.IMAGE_DIGEST)"
 
-        # 去掉 :tag，拼成 @sha256:... 的新值
+        # 组装 @sha256 形式
         REPO="${IMAGE_WITH_TAG%%:*}"
         NEW_IMAGE="${REPO}@${DIGEST}"
-        echo "Updating ${FILE} -> ${NEW_IMAGE}"
+        echo "Pin ${FILE} -> ${NEW_IMAGE}"
 
-        # 先替换 @sha256 形式；如不存在再替换 :tag 形式
+        # 先替换 @sha256，其次替换 :tag
         sed -i "s|^\([[:space:]]*image:\)[[:space:]]*ghcr\.io/.*/orchestrator@sha256:[0-9a-f]\{64\}|\1 ${NEW_IMAGE}|" "${FILE}" || true
         sed -i "s|^\([[:space:]]*image:\)[[:space:]]*ghcr\.io/.*/orchestrator:[^[:space:]]\+|\1 ${NEW_IMAGE}|" "${FILE}" || true
 
         git config user.name  "$(params.COMMIT_USER_NAME)"
         git config user.email "$(params.COMMIT_USER_EMAIL)"
-        git add "${FILE}"
+        git add "${FILE}" || true
 
         if git diff --cached --quiet; then
           echo "No change to commit."
@@ -55,9 +68,4 @@ spec:
         fi
 
         git commit -m "ci: pin orchestrator image to ${DIGEST}"
-        export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes"
         git push origin "$(params.REVISION)"
-      volumeMounts:
-        - name: ssh-dir
-          mountPath: /root/.ssh
-          readOnly: true
