@@ -1,4 +1,3 @@
-# strategy/ci/tekton/pipelines/build-orchestrator.yaml
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
@@ -13,38 +12,31 @@ spec:
       default: main
     - name: image
       type: string
-    - name: userHome                 # ← 新增
+    - name: userHome
       type: string
       default: /tekton/home
   workspaces:
     - name: shared
-    - name: ssh-dir
+    - name: ssh-dir                  # 仍然保留，供后续 commit/push Task 用
   tasks:
     - name: clone
-      taskRef: { name: git-clone }
+      taskRef:
+        name: git-clone-ssh-recurse   # ← 改成自定义 Task
       params:
         - name: url
           value: $(params.repo_url)
         - name: revision
           value: $(params.revision)
-        - name: deleteExisting
-          value: "true"
-        - name: submodules
-          value: "true"
-        - name: depth
-          value: "1"
-        - name: sslVerify
-          value: "true"
-        - name: userHome             # ← 传入
-          value: $(params.userHome)
       workspaces:
         - name: output
           workspace: shared
-        - name: ssh-directory
+        - name: ssh-directory         # ← 继续使用 ssh-dir（绑定 git-ssh secret）
           workspace: ssh-dir
+
     - name: build
       runAfter: [clone]
-      taskRef: { name: kaniko-build-push }
+      taskRef:
+        name: kaniko-build-push
       params:
         - name: IMAGE
           value: $(params.image)
@@ -55,3 +47,22 @@ spec:
       workspaces:
         - name: source
           workspace: shared
+
+    - name: commit-digest
+      runAfter: [build]
+      taskRef:
+        name: git-commit-and-push
+      params:
+        - name: FILE
+          value: k8s/orchestrator/overlays/real/patch-image.yaml
+        - name: IMAGE
+          value: $(tasks.build.results.IMAGE_URL)
+        - name: REVISION
+          value: $(params.revision)
+        - name: IMAGE_DIGEST
+          value: $(tasks.build.results.IMAGE_DIGEST)
+      workspaces:
+        - name: source
+          workspace: shared
+        - name: ssh-dir               # ✅ 这里只保留给 push 用（没问题）
+          workspace: ssh-dir

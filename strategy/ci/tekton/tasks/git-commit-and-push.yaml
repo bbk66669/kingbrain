@@ -1,0 +1,63 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-commit-and-push
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: FILE
+      type: string
+      default: k8s/orchestrator/overlays/real/patch-image.yaml
+    - name: IMAGE           # 形如 ghcr.io/.../orchestrator:<tag>
+      type: string
+    - name: IMAGE_DIGEST    # 形如 sha256:xxxxxxxx
+      type: string
+    - name: REVISION
+      type: string
+      default: main
+    - name: COMMIT_USER_NAME
+      type: string
+      default: tekton-bot
+    - name: COMMIT_USER_EMAIL
+      type: string
+      default: tekton-bot@example.com
+  workspaces:
+    - name: source          # 代码仓库（clone 输出）
+    - name: ssh-dir         # SSH 私钥等
+  steps:
+    - name: write-and-push
+      image: alpine/git:2.45
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -eu
+
+        FILE="$(params.FILE)"
+        IMAGE_WITH_TAG="$(params.IMAGE)"
+        DIGEST="$(params.IMAGE_DIGEST)"
+
+        # 去掉 :tag，拼成 @sha256:... 的新值
+        REPO="${IMAGE_WITH_TAG%%:*}"
+        NEW_IMAGE="${REPO}@${DIGEST}"
+        echo "Updating ${FILE} -> ${NEW_IMAGE}"
+
+        # 先替换 @sha256 形式；如不存在再替换 :tag 形式
+        sed -i "s|^\([[:space:]]*image:\)[[:space:]]*ghcr\.io/.*/orchestrator@sha256:[0-9a-f]\{64\}|\1 ${NEW_IMAGE}|" "${FILE}" || true
+        sed -i "s|^\([[:space:]]*image:\)[[:space:]]*ghcr\.io/.*/orchestrator:[^[:space:]]\+|\1 ${NEW_IMAGE}|" "${FILE}" || true
+
+        git config user.name  "$(params.COMMIT_USER_NAME)"
+        git config user.email "$(params.COMMIT_USER_EMAIL)"
+        git add "${FILE}"
+
+        if git diff --cached --quiet; then
+          echo "No change to commit."
+          exit 0
+        fi
+
+        git commit -m "ci: pin orchestrator image to ${DIGEST}"
+        export GIT_SSH_COMMAND="ssh -o StrictHostKeyChecking=no -o IdentitiesOnly=yes"
+        git push origin "$(params.REVISION)"
+      volumeMounts:
+        - name: ssh-dir
+          mountPath: /root/.ssh
+          readOnly: true

@@ -1,29 +1,29 @@
+# strategy/ci/tekton/pipelineruns/build-orchestrator-vct.yaml
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
-  name: build-orchestrator-pvc-template
+  name: build-orchestrator-vct
   namespace: tekton-pipelines
 spec:
   pipelineRef:
     name: build-orchestrator
+  taskRunTemplate:
+    serviceAccountName: tekton-bot
   params:
     - name: repo_url
       value: git@github.com:bbk66669/kingbrain.git
     - name: revision
       value: main
     - name: image
-      value: ghcr.io/bbk66669/kingbrain/orchestrator:manual-vct-20250822
-  taskRunTemplate:
-    serviceAccountName: tekton-bot   # ← 改到这里
+      value: ghcr.io/bbk66669/kingbrain/orchestrator:manual-20250829-1   # 改个你喜欢的 tag
   workspaces:
     - name: shared
       volumeClaimTemplate:
         spec:
           accessModes: ["ReadWriteOnce"]
           resources:
-            requests:
-              storage: 5Gi
+            requests: { storage: 5Gi }
           storageClassName: local-path
     - name: ssh-dir
       secret:
-        secretName: git-ssh
+        secretName: git-ssh    # 你的 SSH Secret 名称

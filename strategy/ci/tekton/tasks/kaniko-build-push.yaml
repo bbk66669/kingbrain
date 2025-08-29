@@ -9,18 +9,16 @@ spec:
       type: string
     - name: CONTEXT
       type: string
-      default: .
+      default: orchestrator
     - name: DOCKERFILE
       type: string
-      default: Dockerfile
+      default: orchestrator/Dockerfile
   workspaces:
     - name: source
   results:
     - name: IMAGE_DIGEST
-      type: string
-      description: "Pushed image digest"
+      description: "Pushed image digest (e.g. sha256:xxxx)"
     - name: IMAGE_URL
-      type: string
       description: "Pushed image URL (repository[:tag])"
   volumes:
     - name: docker-config
@@ -32,11 +30,12 @@ spec:
   steps:
     - name: build-and-push
       image: gcr.io/kaniko-project/executor:latest
+      workingDir: $(workspaces.source.path)
       args:
         - --destination=$(params.IMAGE)
         - --context=$(workspaces.source.path)/$(params.CONTEXT)
         - --dockerfile=$(workspaces.source.path)/$(params.DOCKERFILE)
-        - --digest-file=$(results.IMAGE_DIGEST.path)   # 写入 Tekton result
+        - --digest-file=$(results.IMAGE_DIGEST.path)
         - --snapshot-mode=time
         - --use-new-run
         - --verbosity=info
@@ -49,8 +48,6 @@ spec:
         #!/bin/sh
         set -eu
         printf '%s' '$(params.IMAGE)' > "$(results.IMAGE_URL.path)"
-        sync
-        # 立即校验一次，没写成功就 fail
         test -s "$(results.IMAGE_URL.path)"
     - name: verify-results
       image: alpine:3.20
@@ -60,6 +57,5 @@ spec:
         ls -l /tekton/results || true
         echo "IMAGE_DIGEST=$(cat $(results.IMAGE_DIGEST.path) || true)"
         echo "IMAGE_URL=$(cat $(results.IMAGE_URL.path) || true)"
-        # 两个结果文件都必须非空
         test -s "$(results.IMAGE_DIGEST.path)"
         test -s "$(results.IMAGE_URL.path)"

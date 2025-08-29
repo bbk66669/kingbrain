@@ -6,7 +6,7 @@ metadata:
 spec:
   workspaces:
     - name: output
-    - name: ssh-directory           # 挂你那个 git-ssh secret
+    - name: ssh-directory
   params:
     - name: url
       type: string
@@ -16,18 +16,38 @@ spec:
   steps:
     - name: clone
       image: alpine:3.20
+      workingDir: $(workspaces.output.path)
       script: |
+        #!/bin/sh
         set -euo pipefail
-        apk add --no-cache openssh git
-        mkdir -p /root/.ssh
-        cp -f $(workspaces.ssh-directory.path)/ssh-privatekey /root/.ssh/id_ed25519 || \
-        cp -f $(workspaces.ssh-directory.path)/ssh-privatekey /root/.ssh/id_rsa
-        cp -f $(workspaces.ssh-directory.path)/known_hosts /root/.ssh/known_hosts
-        chmod 700 /root/.ssh
-        chmod 600 /root/.ssh/id_* /root/.ssh/known_hosts
+        apk add --no-cache git openssh-client
 
-        export GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes'
+        mkdir -p /root/.ssh
+
+        # 写入私钥（避免复制目录/符号链接）
+        if [ -f "$(workspaces.ssh-directory.path)/ssh-privatekey" ]; then
+          umask 077
+          cat "$(workspaces.ssh-directory.path)/ssh-privatekey" > /root/.ssh/id_ed25519 2>/dev/null || true
+          cat "$(workspaces.ssh-directory.path)/ssh-privatekey" > /root/.ssh/id_rsa     2>/dev/null || true
+        fi
+
+        # 写入 known_hosts（要求你 secret 里有这个文件）
+        if [ -f "$(workspaces.ssh-directory.path)/known_hosts" ]; then
+          cp "$(workspaces.ssh-directory.path)/known_hosts" /root/.ssh/known_hosts
+        else
+          echo "ERROR: missing known_hosts in ssh-dir workspace" >&2
+          exit 1
+        fi
+        chmod 600 /root/.ssh/* 2>/dev/null || true
+
+        # 关键：无条件忽略任何 ~/.ssh/config（修复 Bad port 错误源）
+        rm -f /root/.ssh/config
+
+        # 强制不读取 config 文件，仅用明确的 SSH 选项
+        export GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes'
+
         git config --global advice.detachedHead false
-        git clone --recurse-submodules --depth=1 --branch "$(params.revision)" "$(params.url)" "$(workspaces.output.path)"
-        cd "$(workspaces.output.path)"
+
+        # 克隆（含子模块）
+        git clone --recurse-submodules --depth=1 --branch "$(params.revision)" "$(params.url)" .
         git rev-parse --short HEAD
