@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kb-orchestrator
+  namespace: orchestrator
+spec:
+  template:
+    spec:
+      containers:
+        - name: api
+          readinessProbe:
+            httpGet: { path: /kb-api/health, port: 8000 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 2
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: /kb-api/health, port: 8000 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
