@@ -11,4 +11,4 @@ spec:
       containers:
         - name: worker
           # 初始使用已知存在的digest，CI会自动更新这里
-          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:b7caa103cdeb5397081ebc0203971a69a24a2dd556b983971aabc5aa2996f5ee
+          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:3d6d265b7c072425b35eb377b8753f6fc58480534f044ebd922d8551eb5b340a

@@ -20,7 +20,7 @@ spec:
       containers:
         - name: worker
           # 先用一个存在的 digest 作为基线，后续会被 patch 覆盖
-          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:b7caa103cdeb5397081ebc0203971a69a24a2dd556b983971aabc5aa2996f5ee
+          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:3d6d265b7c072425b35eb377b8753f6fc58480534f044ebd922d8551eb5b340a
           imagePullPolicy: IfNotPresent
           workingDir: /app
           command: ["python", "-m", "services.composer.temporal_worker"]
