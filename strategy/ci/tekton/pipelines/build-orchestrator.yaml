@@ -70,9 +70,9 @@ spec:
         - name: ssh-dir               # 用于 push
           workspace: ssh-dir
 
-    # 4) 回写 kb-composer-worker 的镜像 digest（新增）
+    # 4) 回写 kb-composer-worker 的镜像 digest（串行接上一步，避免并行冲突）
     - name: commit-worker-digest
-      runAfter: [build]
+      runAfter: [commit-digest]       # ← 串行，避免与 commit-digest 并行冲突
       taskRef:
         name: git-commit-and-push
       params:

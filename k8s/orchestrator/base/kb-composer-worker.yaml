@@ -8,19 +8,27 @@ metadata:
 spec:
   replicas: 1
   selector:
-    matchLabels: { app: kb-composer-worker }
+    matchLabels:
+      app: kb-composer-worker
   template:
     metadata:
-      labels: { app: kb-composer-worker }
+      labels:
+        app: kb-composer-worker
     spec:
-      serviceAccountName: kb-runner   # 复用你已有的 SA
+      serviceAccountName: kb-runner
+      terminationGracePeriodSeconds: 10
       containers:
         - name: worker
-          # ⚠️ 用与 kb-orchestrator 相同的镜像（保持代码/依赖一致）
-          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:0a042834453005675c481ca58fd2facd621f8cecacf88ef856d38fdb976a9833
+          # 基线用 tag（例如 :main）；实际在 overlays/real 里被 patch 成 digest
+          image: ghcr.io/bbk66669/kingbrain/orchestrator:main
           imagePullPolicy: IfNotPresent
-          command: ["python","-m","services.composer.temporal_worker"]
+          workingDir: /app
+          command: ["python", "-m", "services.composer.temporal_worker"]
           env:
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH          # 兜底确保能 import 到 /app 下的 services/*
+              value: /app:/workspace
             - name: REPO_ROOT
               value: /workspace
             - name: KB_TEMPORAL_ADDR
@@ -30,14 +38,20 @@ spec:
             - name: KB_TASK_QUEUE
               value: kb-composer
             - name: KB_COMPOSER_MODE
-              value: "AUTO"       # AUTO: 有 key 就用 LLM；无 key 则退回 scaffold
-            # LLM 凭据（任选其一，与你现有方式保持一致）
+              value: "AUTO"
+            # LLM 凭据（可选，有就用）
             - name: OPENAI_API_KEY
               valueFrom:
-                secretKeyRef: { name: llm-keys, key: OPENAI_API_KEY, optional: true }
+                secretKeyRef:
+                  name: llm-keys
+                  key: OPENAI_API_KEY
+                  optional: true
             - name: ANTHROPIC_API_KEY
               valueFrom:
-                secretKeyRef: { name: llm-keys, key: ANTHROPIC_API_KEY, optional: true }
+                secretKeyRef:
+                  name: llm-keys
+                  key: ANTHROPIC_API_KEY
+                  optional: true
           volumeMounts:
             - name: repo
               mountPath: /workspace
