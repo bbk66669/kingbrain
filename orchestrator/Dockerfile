@@ -9,7 +9,7 @@ RUN pip install --upgrade pip && \
     pip install --no-cache-dir -r /tmp/requirements.txt
 
 # 把 orchestrator/ 目录里的源码拷到容器内 /app/orchestrator/（作为 Python 包）
-COPY . /app/orchestrator/
+COPY . /app
 
 EXPOSE 8000
 

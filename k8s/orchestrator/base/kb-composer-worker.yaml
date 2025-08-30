@@ -23,7 +23,7 @@ spec:
           image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:b7caa103cdeb5397081ebc0203971a69a24a2dd556b983971aabc5aa2996f5ee
           imagePullPolicy: IfNotPresent
           workingDir: /app
-          command: ["python", "-m", "orchestrator.services.composer.temporal_worker"]
+          command: ["python", "-m", "services.composer.temporal_worker"]
           env:
             - name: PYTHONUNBUFFERED
               value: "1"
