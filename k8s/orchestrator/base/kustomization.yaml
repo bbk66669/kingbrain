@@ -5,3 +5,4 @@ resources:
   - svc.yaml
   - rbac.yaml
   - ingress.yaml
+  - kb-composer-worker.yaml
