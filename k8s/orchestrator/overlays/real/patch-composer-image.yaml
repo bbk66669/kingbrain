@@ -10,4 +10,4 @@ spec:
         - name: ghcr-pull
       containers:
         - name: worker
-          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:REPLACE_ME
+          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:<real-digest-here>
