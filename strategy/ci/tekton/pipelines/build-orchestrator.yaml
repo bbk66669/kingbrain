@@ -19,9 +19,10 @@ spec:
     - name: shared
     - name: ssh-dir                  # 仍然保留，供后续 commit/push Task 用
   tasks:
+    # 1) Clone（自定义带 SSH 的 Task）
     - name: clone
       taskRef:
-        name: git-clone-ssh-recurse   # ← 改成自定义 Task
+        name: git-clone-ssh-recurse   # ← 你的自定义 Task
       params:
         - name: url
           value: $(params.repo_url)
@@ -33,6 +34,7 @@ spec:
         - name: ssh-directory         # ← 继续使用 ssh-dir（绑定 git-ssh secret）
           workspace: ssh-dir
 
+    # 2) Build & Push (Kaniko)
     - name: build
       runAfter: [clone]
       taskRef:
@@ -48,6 +50,7 @@ spec:
         - name: source
           workspace: shared
 
+    # 3) 回写 orchestrator Deployment 的镜像 digest
     - name: commit-digest
       runAfter: [build]
       taskRef:
@@ -64,5 +67,25 @@ spec:
       workspaces:
         - name: source
           workspace: shared
-        - name: ssh-dir               # ✅ 这里只保留给 push 用（没问题）
+        - name: ssh-dir               # 用于 push
+          workspace: ssh-dir
+
+    # 4) 回写 kb-composer-worker 的镜像 digest（新增）
+    - name: commit-worker-digest
+      runAfter: [build]
+      taskRef:
+        name: git-commit-and-push
+      params:
+        - name: FILE
+          value: k8s/orchestrator/overlays/real/patch-composer-image.yaml
+        - name: IMAGE
+          value: $(tasks.build.results.IMAGE_URL)
+        - name: REVISION
+          value: $(params.revision)
+        - name: IMAGE_DIGEST
+          value: $(tasks.build.results.IMAGE_DIGEST)
+      workspaces:
+        - name: source
+          workspace: shared
+        - name: ssh-dir               # 用于 push
           workspace: ssh-dir

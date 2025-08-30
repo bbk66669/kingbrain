@@ -7,3 +7,4 @@ patchesStrategicMerge:
   - patch-image.yaml
   - patch-clear-cmd.yaml
   - patch-probes.yaml
+  - patch-composer-image.yaml

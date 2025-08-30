@@ -11,6 +11,7 @@ allow:
   - "/strategy/ci/**"
   - "/.collab/**"
   - "/docs/**"
+  - "/reports/**"
 deny:
   - "/.git/**"
   - "/configs/registry/**"        # 受控

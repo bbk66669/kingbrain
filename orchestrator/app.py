@@ -1,7 +1,7 @@
 # orchestrator/app.py
 import os, json
-from typing import Optional, Dict, Any, List
-from fastapi import FastAPI, Request
+from typing import Optional, Dict, Any
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 
 try:
@@ -56,27 +56,40 @@ async def _run_phase(req: Request, phase: str):
     return JSONResponse(payload, status_code=(200 if not res.error else 400),
                         headers={"x-kb-mode": res.mode})
 
-@app.post("/kb-api/ack")
-async def ack(req: Request):
-    return await _run_phase(req, "ACK")
+# —— 同步五阶段（保留） ——
+@app.post("/kb-api/ack")    async def ack(req: Request):    return await _run_phase(req, "ACK")
+@app.post("/kb-api/plan")   async def plan(req: Request):   return await _run_phase(req, "PLAN")
+@app.post("/kb-api/borrow") async def borrow(req: Request): return await _run_phase(req, "BORROW")
+@app.post("/kb-api/diff")   async def diff(req: Request):   return await _run_phase(req, "DIFF")
+@app.post("/kb-api/cr")     async def cr(req: Request):     return await _run_phase(req, "CR")
 
-@app.post("/kb-api/plan")
-async def plan(req: Request):
-    return await _run_phase(req, "PLAN")
+# !!! 删除你之前那个返回 404 的占位 /kb-api/runs/{wid} 路由 !!!
 
-@app.post("/kb-api/borrow")
-async def borrow(req: Request):
-    return await _run_phase(req, "BORROW")
+# —— 异步（Temporal）——
+from services.composer.temporal_client import submit_async as submit_wf, describe_async as describe_wf
 
-@app.post("/kb-api/diff")
-async def diff(req: Request):
-    return await _run_phase(req, "DIFF")
-
-@app.post("/kb-api/cr")
-async def cr(req: Request):
-    return await _run_phase(req, "CR")
+@app.post("/kb-api/submit")
+async def submit(payload: Dict[str, Any]):
+    phase = (payload.get("phase") or "").upper()
+    if phase not in ("ACK","PLAN","BORROW","DIFF","CR"):
+        raise HTTPException(400, f"bad phase: {phase}")
+    task  = payload.get("task","")
+    notes = payload.get("notes","")
+    ctx = {
+        "repo_root": os.getenv("REPO_ROOT", "/workspace"),
+        "agents_file": os.path.join(os.getenv("REPO_ROOT", "/workspace"), ".collab/agents.yaml"),
+        "workflow_id": None, "run_id": None,
+    }
+    try:
+        ids = await submit_wf(phase, task, notes, ctx)
+        return JSONResponse({"queued": True, **ids})
+    except Exception as e:
+        raise HTTPException(503, f"temporal submit failed: {e}")
 
 @app.get("/kb-api/runs/{wid}")
-async def runs(wid: str, wait: Optional[int]=0):
-    return JSONResponse({"error": f"workflow not found for ID: {wid}", "mode": _mode()},
-                        status_code=404, headers={"x-kb-mode": _mode()})
+async def get_run(wid: str):
+    try:
+        info = await describe_wf(wid)
+        return JSONResponse(info)
+    except Exception as e:
+        raise HTTPException(404, f"{wid}: {e}")

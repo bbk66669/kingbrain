@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kb-composer-worker
+  namespace: orchestrator
+  labels:
+    app: kb-composer-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: kb-composer-worker }
+  template:
+    metadata:
+      labels: { app: kb-composer-worker }
+    spec:
+      serviceAccountName: kb-runner   # 复用你已有的 SA
+      containers:
+        - name: worker
+          # ⚠️ 用与 kb-orchestrator 相同的镜像（保持代码/依赖一致）
+          image: ghcr.io/bbk66669/kingbrain/orchestrator@sha256:0a042834453005675c481ca58fd2facd621f8cecacf88ef856d38fdb976a9833
+          imagePullPolicy: IfNotPresent
+          command: ["python","-m","services.composer.temporal_worker"]
+          env:
+            - name: REPO_ROOT
+              value: /workspace
+            - name: KB_TEMPORAL_ADDR
+              value: temporal-frontend.orchestrator.svc.cluster.local:7233
+            - name: KB_TEMPORAL_NAMESPACE
+              value: default
+            - name: KB_TASK_QUEUE
+              value: kb-composer
+            - name: KB_COMPOSER_MODE
+              value: "AUTO"       # AUTO: 有 key 就用 LLM；无 key 则退回 scaffold
+            # LLM 凭据（任选其一，与你现有方式保持一致）
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef: { name: llm-keys, key: OPENAI_API_KEY, optional: true }
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef: { name: llm-keys, key: ANTHROPIC_API_KEY, optional: true }
+          volumeMounts:
+            - name: repo
+              mountPath: /workspace
+      volumes:
+        - name: repo
+          hostPath:
+            path: /srv/kingbrain
+            type: Directory
