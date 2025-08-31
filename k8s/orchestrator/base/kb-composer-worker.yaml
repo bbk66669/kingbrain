@@ -54,6 +54,33 @@ spec:
                   name: llm-keys
                   key: ANTHROPIC_API_KEY
                   optional: true
+
+            # ====== 可选：审计远端投递开关（不开启就不生效） ======
+            # NATS（CloudEvents over NATS）
+            - name: KB_AUDIT_ENABLE_NATS
+              value: "0"                 # 需要时改成 "1"
+            - name: KB_AUDIT_NATS_URL
+              value: "nats://nats:4222"  # 按你的集群服务名调整
+            - name: KB_AUDIT_NATS_SUBJECT_PREFIX
+              value: "kb.audit."
+
+            # Neo4j（事件写入图）
+            - name: KB_AUDIT_ENABLE_NEO4J
+              value: "0"                 # 需要时改成 "1"
+            - name: KB_AUDIT_NEO4J_URI
+              value: "bolt://neo4j.neo4j.svc.cluster.local:7687"
+            - name: KB_AUDIT_NEO4J_USER
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-auth
+                  key: username
+                  optional: true
+            - name: KB_AUDIT_NEO4J_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: neo4j-auth
+                  key: password
+                  optional: true
           volumeMounts:
             - name: repo
               mountPath: /workspace

@@ -5,3 +5,6 @@ langgraph
 openai
 anthropic
 temporalio
+cloudevents
+nats-py
+neo4j
