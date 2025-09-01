@@ -1,7 +1,7 @@
 # ===== KingBrain bootstrap Makefile =====
 # 使用方式：
 #   make kb-preflight   # 基础连通性检查
-#   make kb-deploy      # 部署 orchestrator FAKE 骨架（kustomize overlay）
+#   make kb-deploy      # 部署 orchestrator 骨架（kustomize overlay）
 #   make kb-contracts   # 合约探活：/kb-api/health
 #   make kb-smoke       # 冒烟：POST /kb-api/plan 返回统一 envelope
 #   make kb-diag        # 诊断信息
@@ -13,10 +13,16 @@
 #   make kb-cr          # trigger /kb-api/cr
 #   make kb-clean       # 清理可能遗留的 tmp-* 调试 Pod
 #   make kb-status      # 查看 rollout 状态与 Pod 详情
+#   make kb-submit-plan # 异步 submit：phase=PLAN，打印 workflow_id
+#   make kb-run wid=ID  # 查询异步运行
+#   make kb-artifacts   # 列出 hostPath 产物
+#   make kb-audit       # tail 本地审计 JSONL
+#   make kb-worker-logs # 跟随 worker 日志
 
 SHELL := /bin/bash
 KNS ?= orchestrator
-K8S_OVERLAY ?= k8s/orchestrator/overlays/fake
+K8S_OVERLAY ?= k8s/orchestrator/overlays/real
+SVC ?= kb-orchestrator
 
 .DEFAULT_GOAL := kb-help
 
@@ -36,6 +42,11 @@ kb-help:
 	@echo "  kb-cr          - trigger /kb-api/cr"
 	@echo "  kb-clean       - clean leftover tmp-* pods"
 	@echo "  kb-status      - show rollout status & pod details"
+	@echo "  kb-submit-plan - async: POST /kb-api/submit (phase=PLAN) and print workflow_id"
+	@echo "  kb-run         - GET /kb-api/runs/{wid} (use wid=<id>)"
+	@echo "  kb-artifacts   - list recent artifacts on hostPath"
+	@echo "  kb-audit       - tail audit jsonl (if present)"
+	@echo "  kb-worker-logs - tail composer-worker logs"
 
 .PHONY: kb-preflight
 kb-preflight:
@@ -54,7 +65,7 @@ kb-contracts:
 	kubectl -n $(KNS) run tmp-curl-$$(date +%s) --rm -i --restart=Never --image=alpine:3.20 -- \
 	  sh -lc 'set -e; apk add --no-cache curl jq >/dev/null; \
 	    i=0; until [ $$i -ge 5 ]; do \
-	      if curl -fsS --max-time 10 http://kb-orchestrator.$(KNS).svc.cluster.local:8000/kb-api/health \
+	      if curl -fsS --max-time 10 http://$(SVC).$(KNS).svc.cluster.local:8000/kb-api/health \
 	        | jq -e ".status==\"ok\" and .mode!=null" >/dev/null; then \
 	        echo OK; exit 0; \
 	      fi; \
@@ -70,7 +81,7 @@ kb-smoke:
 	    i=0; until [ $$i -ge 5 ]; do \
 	      if curl -fsS --max-time 20 -X POST -H "Content-Type: application/json" \
 	        -d "{\"task\":\"smoke\",\"notes\":\"fake\"}" \
-	        http://kb-orchestrator.$(KNS).svc.cluster.local:8000/kb-api/plan \
+	        http://$(SVC).$(KNS).svc.cluster.local:8000/kb-api/plan \
 	        | jq -e "(.result.phase // .phase) == \"PLAN\"" >/dev/null; then \
 	        echo OK; exit 0; \
 	      fi; \
@@ -82,16 +93,21 @@ kb-smoke:
 kb-rollback:
 	@echo ">> Rollback to previous ReplicaSet (if any)"
 	- kubectl -n $(KNS) rollout undo deploy/kb-orchestrator
+	- kubectl -n $(KNS) rollout undo deploy/kb-composer-worker || true
 
 .PHONY: kb-diag
 kb-diag:
 	@echo ">> Diagnostics"
 	@kubectl -n $(KNS) get deploy,svc,ingress,pods -o wide
 	@kubectl -n $(KNS) logs deploy/kb-orchestrator --tail=200 || true
+	@echo ">> Worker logs (tail)"
+	@kubectl -n $(KNS) logs deploy/kb-composer-worker --tail=120 || true
 	@echo ">> Recent events"
 	@kubectl -n $(KNS) get events --sort-by=.lastTimestamp | tail -n 20 || true
 	@echo ">> Deploy describe (tail)"
 	@kubectl -n $(KNS) describe deploy/kb-orchestrator | tail -n 80 || true
+	@echo ">> Worker describe (tail)"
+	@kubectl -n $(KNS) describe deploy/kb-composer-worker | tail -n 80 || true
 
 # 通用 API 调用模板 (支持 t / n / extra 参数)
 define KB_RUN_TEMPLATE
@@ -103,7 +119,7 @@ define KB_RUN_TEMPLATE
 	      "$$extra|try fromjson catch {} as $$E | {task:$$task, notes:$$notes} + $$E"); \
 	    curl -fsS --max-time 20 -X POST -H "Content-Type: application/json" \
 	      -d "$$JSON" \
-	      http://kb-orchestrator.$(KNS).svc.cluster.local:8000/kb-api/$(1) | jq'
+	      http://$(SVC).$(KNS).svc.cluster.local:8000/kb-api/$(1) | jq'
 endef
 
 .PHONY: kb-ack kb-plan kb-borrow kb-diff kb-cr
@@ -129,3 +145,42 @@ kb-status:
 	@kubectl -n $(KNS) get pods -l app=kb-orchestrator -o wide
 	@echo ">> Pod describe (last 50 lines)"
 	@kubectl -n $(KNS) describe pod -l app=kb-orchestrator | tail -n 50 || true
+	@echo ">> Status: kb-composer-worker rollout & pods"
+	@kubectl -n $(KNS) rollout status deploy/kb-composer-worker || true
+	@kubectl -n $(KNS) get deploy/kb-composer-worker -o wide || true
+	@kubectl -n $(KNS) get rs -l app=kb-composer-worker || true
+	@kubectl -n $(KNS) get pods -l app=kb-composer-worker -o wide || true
+	@echo ">> Worker Pod describe (last 50 lines)"
+	@kubectl -n $(KNS) describe pod -l app=kb-composer-worker | tail -n 50 || true
+
+## ===== Async submit & run =====
+.PHONY: kb-submit-plan kb-run kb-worker-logs kb-artifacts kb-audit
+
+kb-submit-plan:
+	@echo ">> Async submit: PLAN"
+	kubectl -n $(KNS) run tmp-submit-$$RANDOM --rm -i --restart=Never --image=alpine:3.20 -- \
+	  sh -lc 'set -e; apk add --no-cache curl jq >/dev/null; \
+	    curl -fsS -X POST -H "Content-Type: application/json" \
+	      -d "{\"phase\":\"PLAN\",\"task\":\"scaffold\",\"notes\":\"submit\"}" \
+	      http://$(SVC).$(KNS).svc.cluster.local:8000/kb-api/submit | tee /dev/stderr | jq -r ".workflow_id"'
+
+kb-run:
+	@test -n "$$wid" || (echo "usage: make kb-run wid=<workflow_id>"; exit 1)
+	kubectl -n $(KNS) run tmp-runs-$$RANDOM --rm -i --restart=Never --image=alpine:3.20 -- \
+	  sh -lc 'set -e; apk add --no-cache curl jq >/dev/null; \
+	    curl -fsS http://$(SVC).$(KNS).svc.cluster.local:8000/kb-api/runs/$(wid) | jq'
+
+kb-worker-logs:
+	@kubectl -n $(KNS) logs deploy/kb-composer-worker -f
+
+kb-artifacts:
+	@echo ">> Artifacts on hostPath (/srv/kingbrain)"
+	@ls -la /srv/kingbrain/docs/kingbrain/PLAN/    2>/dev/null || true
+	@ls -la /srv/kingbrain/docs/kingbrain/BORROW/  2>/dev/null || true
+	@ls -la /srv/kingbrain/docs/kingbrain/DIFF/    2>/dev/null || true
+	@ls -la /srv/kingbrain/reports/CR/             2>/dev/null || true
+
+kb-audit:
+	@echo ">> Tail audit jsonl (if any)"
+	@ls -1 /srv/kingbrain/.collab/audit/events-*.jsonl 2>/dev/null | tail -n 1 | \
+	  xargs -r tail -n 50 || echo "no audit file"

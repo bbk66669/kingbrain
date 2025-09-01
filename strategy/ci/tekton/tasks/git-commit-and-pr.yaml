@@ -1,0 +1,95 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-commit-and-pr
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: BRANCH
+      type: string
+      default: "kb/auto"
+    - name: TITLE
+      type: string
+      default: "kb: automated PR"
+    - name: BODY_FILE
+      type: string
+      default: "reports/CR/CR-latest.md"
+    - name: REVISION
+      type: string
+      default: "main"
+    - name: GH_REPO
+      type: string
+      description: "owner/repo"
+    - name: CHANGES_GLOB
+      type: string
+      default: "docs/kingbrain/** reports/** data/**"
+  workspaces:
+    - name: source
+    - name: ssh-dir
+  steps:
+    - name: commit
+      image: alpine:3.20
+      workingDir: $(workspaces.source.path)
+      script: |
+        #!/bin/sh
+        set -euo pipefail
+        apk add --no-cache git openssh-client
+        mkdir -p /root/.ssh
+        if [ -f "$(workspaces.ssh-dir.path)/ssh-privatekey" ]; then
+          umask 077
+          cp "$(workspaces.ssh-dir.path)/ssh-privatekey" /root/.ssh/id_ed25519 2>/dev/null || true
+          cp "$(workspaces.ssh-dir.path)/ssh-privatekey" /root/.ssh/id_rsa     2>/dev/null || true
+        fi
+        cp "$(workspaces.ssh-dir.path)/known_hosts" /root/.ssh/known_hosts || true
+        chmod 700 /root/.ssh; chmod 600 /root/.ssh/* 2>/dev/null || true
+        export GIT_SSH_COMMAND='ssh -F /dev/null -o StrictHostKeyChecking=yes -o IdentitiesOnly=yes'
+
+        BR="$(params.BRANCH)"
+        git config user.name  "tekton-bot"
+        git config user.email "tekton-bot@example.com"
+        git fetch origin
+        git checkout -B "$BR" "origin/$(params.REVISION)"
+        # 只添加允许的产物目录
+        for g in $(params.CHANGES_GLOB); do
+          git add $g 2>/dev/null || true
+        done
+        if git diff --cached --quiet; then
+          echo "No staged changes, skip commit."
+          exit 0
+        fi
+        git commit -m "$(params.TITLE)"
+        git push -u origin "$BR"
+
+    - name: create-pr
+      image: curlimages/curl:8.8.0
+      workingDir: $(workspaces.source.path)
+      env:
+        - name: GH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: gh-token
+              key: token
+              optional: true
+      script: |
+        #!/bin/sh
+        set -euo pipefail
+        if [ -z "${GH_TOKEN:-}" ]; then
+          echo "GH_TOKEN not set, skip PR creation."
+          exit 0
+        fi
+        BODY="Automated PR by Tekton"
+        if [ -f "$(params.BODY_FILE)" ]; then
+          BODY="$(cat $(params.BODY_FILE))"
+        fi
+        json="$(printf '{"title":"%s","body":%s,"head":"%s","base":"%s"}' \
+          "$(params.TITLE)" \
+          "$(jq -Rs . <<<'$BODY')" \
+          "$(params.BRANCH)" \
+          "$(params.REVISION)")"
+        curl -fsSL -X POST \
+          -H "Authorization: Bearer ${GH_TOKEN}" \
+          -H "Content-Type: application/json" \
+          "https://api.github.com/repos/$(params.GH_REPO)/pulls" \
+          -d "$json" | tee pr.json
+        echo "PR created:"
+        jq -r '.html_url' pr.json || true

@@ -1,0 +1,13 @@
+{
+  "task": "demo-sprint",
+  "phase": "PLAN",
+  "borrow": [
+    {
+      "type": "git",
+      "repo": "https://github.com/<ORG>/<REPO>.git",
+      "ref": "main",
+      "subpath": "templates/basic",
+      "target": "apps/demo-svc"
+    }
+  ]
+}

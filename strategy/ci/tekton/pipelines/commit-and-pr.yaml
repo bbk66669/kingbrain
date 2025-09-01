@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: kb-commit-and-pr
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: repo_url
+      type: string
+    - name: revision
+      type: string
+      default: main
+    - name: gh_repo
+      type: string
+      description: "owner/repo"
+    - name: branch
+      type: string
+      default: kb/auto
+    - name: title
+      type: string
+      default: "kb: automated PR"
+  workspaces:
+    - name: shared
+    - name: ssh-dir
+  tasks:
+    - name: clone
+      taskRef:
+        name: git-clone-ssh-recurse
+      params:
+        - name: url
+          value: $(params.repo_url)
+        - name: revision
+          value: $(params.revision)
+      workspaces:
+        - name: output
+          workspace: shared
+        - name: ssh-directory
+          workspace: ssh-dir
+
+    - name: commit-and-pr
+      runAfter:
+        - clone
+      taskRef:
+        name: git-commit-and-pr
+      params:
+        - name: BRANCH
+          value: $(params.branch)
+        - name: TITLE
+          value: $(params.title)
+        - name: REVISION
+          value: $(params.revision)
+        - name: GH_REPO
+          value: $(params.gh_repo)
+      workspaces:
+        - name: source
+          workspace: shared
+        - name: ssh-dir
+          workspace: ssh-dir

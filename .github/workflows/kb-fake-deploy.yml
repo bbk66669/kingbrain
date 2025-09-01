@@ -23,10 +23,19 @@ jobs:
         run: make kb-preflight
 
       - name: Deploy (FAKE)
-        run: make kb-deploy FAKE=1
+        run: make kb-deploy K8S_OVERLAY=k8s/orchestrator/overlays/fake
+
+      - name: Wait rollout
+        run: |
+          kubectl -n orchestrator rollout status deploy/kb-orchestrator --timeout=180s
+          kubectl -n orchestrator get pods -o wide
 
       - name: Contracts
         run: make kb-contracts
 
       - name: Smoke
         run: make kb-smoke
+
+      - name: On failure: diag
+        if: ${{ failure() }}
+        run: make kb-diag
