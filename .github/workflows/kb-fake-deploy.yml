@@ -36,6 +36,7 @@ jobs:
       - name: Smoke
         run: make kb-smoke
 
-      - name: On failure: diag
+      # 只在前面任一步失败时执行诊断
+      - name: On failure:diag
         if: ${{ failure() }}
         run: make kb-diag
